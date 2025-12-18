@@ -949,16 +949,22 @@ function processGestures(lm) {
             target: new THREE.Vector3(0, 0, 0)
         };
     }
-    if (typeof window.isFocusLocked === 'undefined') window.isFocusLocked = false;
+    // 记录被锁定的照片（包含原始位置+原始运动状态）
+    if (typeof window.lockedPhoto === 'undefined') window.lockedPhoto = {
+        mesh: null,
+        originalPos: null,
+        originalRotation: null,
+        isLocked: false
+    };
 
-    // 聚焦配置（重点！调整offsetAxis和offsetDirection，避免穿过照片）
+    // 聚焦配置（平缓速度，不头晕）
     const FOCUS_CONFIG = {
-        targetDistance: 10,       // 相机到照片的距离（调大，预留足够空间）
-        focusSpeed: 0.15,         // 平滑移动速度
-        lockThreshold: 0.1,       
+        targetDistance: 8,        // 相机到照片的距离
+        focusSpeed: 0.15,         // 平缓速度（0.15，不头晕）
+        lockThreshold: 1.0,       // 锁定阈值（1.0，不用太精准）
         restoreSpeed: 0.15,
-        offsetAxis: 'z',          // 偏移轴（可选：x/y/z，根据照片分布改）
-        offsetDirection: -1       // 偏移方向（1=正方向，-1=反方向，避免穿过照片）
+        offsetAxis: 'z',          
+        offsetDirection: -1       
     };
 
     // ========== 2. 获取手势关键点 ==========
@@ -990,68 +996,90 @@ function processGestures(lm) {
         STATE.mode = 'FOCUS';
         const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
         
-        // 刚捏合时切换目标 + 打印调试日志
+        // 刚捏合时：锁定照片位置 + 初始化聚焦
         if (isJustPinched) {
-            window.isFocusLocked = false;
+            // 先解锁上一张被锁定的照片（如果有）
+            if (window.lockedPhoto.isLocked && window.lockedPhoto.mesh) {
+                window.lockedPhoto.mesh.position.copy(window.lockedPhoto.originalPos);
+                window.lockedPhoto.mesh.rotation.copy(window.lockedPhoto.originalRotation);
+                window.lockedPhoto.isLocked = false;
+                console.log("🔓 解锁上一张照片");
+            }
+
             if (photos.length > 0) {
+                // 切换照片索引
                 window.photoIndex = (window.photoIndex + 1) % photos.length;
-                STATE.focusTarget = photos[window.photoIndex].mesh;
-                
-                // 调试日志1：打印照片的位置
-                const photoPos = STATE.focusTarget.position;
+                const targetPhoto = photos[window.photoIndex].mesh;
+                STATE.focusTarget = targetPhoto;
+
+                // ========== 核心：锁定照片位置 ==========
+                window.lockedPhoto = {
+                    mesh: targetPhoto,
+                    originalPos: targetPhoto.position.clone(), // 记录原始位置
+                    originalRotation: targetPhoto.rotation.clone(), // 记录原始旋转
+                    isLocked: true
+                };
+                // 强制照片固定在当前位置（停止所有移动/旋转）
+                targetPhoto.position.copy(window.lockedPhoto.originalPos);
+                targetPhoto.rotation.copy(window.lockedPhoto.originalRotation);
+
+                // 打印日志
+                const photoPos = window.lockedPhoto.originalPos;
                 console.log(`===== 切换到第${window.photoIndex}张照片 =====`);
-                console.log(`照片位置：x=${photoPos.x.toFixed(2)}, y=${photoPos.y.toFixed(2)}, z=${photoPos.z.toFixed(2)}`);
+                console.log(`📸 锁定照片位置：x=${photoPos.x.toFixed(2)}, y=${photoPos.y.toFixed(2)}, z=${photoPos.z.toFixed(2)}`);
+                
+                // 计算相机目标位置
+                const cameraTargetPos = photoPos.clone();
+                cameraTargetPos[FOCUS_CONFIG.offsetAxis] += FOCUS_CONFIG.targetDistance * FOCUS_CONFIG.offsetDirection;
+                console.log(`🎥 相机目标位置：x=${cameraTargetPos.x.toFixed(2)}, y=${cameraTargetPos.y.toFixed(2)}, z=${cameraTargetPos.z.toFixed(2)}`);
             } else {
                 STATE.focusTarget = STATE.starMesh;
                 console.log("无照片，聚焦星星");
             }
         }
 
-        // 精准聚焦 + 详细调试日志
-        if (STATE.focusTarget) {
-            const targetPos = STATE.focusTarget.position.clone();
-            
-            // 计算相机目标位置（优化：根据轴和方向偏移，避免穿过照片）
+        // 相机平缓聚焦到固定的照片位置
+        if (window.lockedPhoto.isLocked && window.lockedPhoto.originalPos) {
+            const targetPos = window.lockedPhoto.originalPos;
             const cameraTargetPos = targetPos.clone();
-            // 按配置的轴和方向偏移（比如z轴反方向：z = 照片z - 10）
             cameraTargetPos[FOCUS_CONFIG.offsetAxis] += FOCUS_CONFIG.targetDistance * FOCUS_CONFIG.offsetDirection;
 
-            // 调试日志2：打印相机目标位置
-            console.log(`相机目标位置：x=${cameraTargetPos.x.toFixed(2)}, y=${cameraTargetPos.y.toFixed(2)}, z=${cameraTargetPos.z.toFixed(2)}`);
-            
-            // 计算当前相机与目标位置的距离
+            // 计算当前距离
             const currentDistance = camera.position.distanceTo(cameraTargetPos);
-            // 调试日志3：打印当前距离和锁定状态
-            console.log(`当前相机到目标距离：${currentDistance.toFixed(2)}，锁定阈值：${FOCUS_CONFIG.lockThreshold}`);
+            console.log(`📏 当前距离：${currentDistance.toFixed(2)}，锁定阈值：${FOCUS_CONFIG.lockThreshold}`);
 
-            // 平滑移动 + 锁定逻辑
-            if (!window.isFocusLocked) {
-                if (currentDistance > FOCUS_CONFIG.lockThreshold) {
-                    camera.position.lerp(cameraTargetPos, FOCUS_CONFIG.focusSpeed);
-                    console.log(`相机移动中：当前位置 x=${camera.position.x.toFixed(2)}, y=${camera.position.y.toFixed(2)}, z=${camera.position.z.toFixed(2)}`);
-                } else {
-                    window.isFocusLocked = true;
-                    camera.position.copy(cameraTargetPos); // 强制对齐
-                    console.log("✅ 聚焦完成，锁定相机位置");
-                }
+            // 平缓移动（0.15速度，不头晕）
+            if (currentDistance > FOCUS_CONFIG.lockThreshold) {
+                camera.position.lerp(cameraTargetPos, FOCUS_CONFIG.focusSpeed);
+                console.log(`🚶 相机平缓移动中：x=${camera.position.x.toFixed(2)}, y=${camera.position.y.toFixed(2)}, z=${camera.position.z.toFixed(2)}`);
+            } else {
+                // 到达目标距离，锁定相机位置
+                camera.position.copy(cameraTargetPos);
+                console.log("✅ 聚焦完成，视角固定");
             }
 
-            // 强制朝向照片中心
+            // 强制相机朝向照片中心
             camera.lookAt(targetPos);
-            console.log(`相机朝向：照片中心 (${targetPos.x.toFixed(2)}, ${targetPos.y.toFixed(2)}, ${targetPos.z.toFixed(2)})`);
         }
 
-        // 停止旋转
+        // 停止场景旋转
         STATE.spinVel.x = 0;
         STATE.spinVel.y = 0;
     } else {
-        // 松开Pinch：恢复视角 + 打印日志
+        // ========== 松开Pinch：解锁照片 + 恢复视角 ==========
         STATE.mode = isPalmOpen ? 'SCATTER' : 'TREE';
         STATE.wasPointing = false;
-        window.isFocusLocked = false;
 
-        console.log("🔙 松开Pinch，恢复初始视角");
-        // 恢复相机位置和朝向
+        // 解锁被锁定的照片（恢复移动）
+        if (window.lockedPhoto.isLocked && window.lockedPhoto.mesh) {
+            // 可选：如果照片有自动运动逻辑，这里可以恢复其运动状态
+            // 比如：targetPhoto.userData.isMoving = true;
+            window.lockedPhoto.isLocked = false;
+            console.log("🔓 松开Pinch，解锁照片，恢复移动");
+        }
+
+        // 平缓恢复相机初始视角
+        console.log("🔙 恢复初始视角");
         camera.position.lerp(window.cameraOriginalState.pos, FOCUS_CONFIG.restoreSpeed);
         camera.lookAt(window.cameraOriginalState.target);
 
