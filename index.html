@@ -985,7 +985,7 @@ function processGestures(lm) {
         STATE.spinVel.x *= 0.9;
         STATE.spinVel.y *= 0.9;
     } 
-    // ========== 3. 非Pinch状态 ==========
+    // ========== 3. TREE / SCATTER 模式（else 对应上面的 isPinching if） ==========
     else {
         // 手掌张开/放松逻辑（保留原有）
         const dIndex = Math.hypot(indexTip.x - lm[0].x, indexTip.y - lm[0].y);
@@ -1010,20 +1010,17 @@ function processGestures(lm) {
             STATE.spinVel.x *= 0.9;
             STATE.spinVel.y *= 0.9;
         }
-    }
 
-    // ========== 4. 保存上一帧Pinch状态 ==========
-    window.lastPinch = isPinching;
-
-    // 更新手的位置
-    if (STATE.mode !== 'FOCUS') {
+        // 更新手的位置（只在非FOCUS模式下）
         const targetX = (palm.x - 0.5) * 3.0;
         const targetY = (palm.y - 0.5) * 3.0;
         STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
         STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
     }
-}
 
+    // ========== 4. 保存上一帧Pinch状态 ==========
+    window.lastPinch = isPinching;
+}
             // 2. TREE / SCATTER 模式
             else {
                 STATE.wasPointing = false;
