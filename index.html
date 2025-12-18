@@ -754,7 +754,7 @@ function addTipPhotoAsParticles(texture) {
         // 3.2 创建材质（模仿相框的金属质感 + 透明/纹理配置）
         const material = new THREE.MeshStandardMaterial({
             map: texture,               // 绑定皮头照片纹理
-            transparent: false,          // 开启透明（避免遮挡）
+            transparent: true,          // 开启透明（避免遮挡）
             depthWrite: false,          // 解决透明渲染层级问题
             metalness: 1.0,             // 模仿相框的高金属感（原0.9→1.0更贴近）
             roughness: 0.1,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
@@ -942,13 +942,26 @@ function addTipPhotoAsParticles(texture) {
 
             // 获取关键点坐标 (0:手腕, 4:拇指, 8:食指...)
             const wrist = lm[0];
-            // const thumbTip = lm[4]; // 不需要拇指了
+            const thumbTip = lm[4]; 
             const indexTip = lm[8];
             const middleTip = lm[12];
             const ringTip = lm[16];
             const pinkyTip = lm[20];
             const palm = lm[9]; 
 
+
+
+		   // ===================== 新增：Pinch手势判定 =====================
+    // 计算拇指尖和食指尖的距离（核心：捏合手势的判定）
+    const pinchDistance = Math.hypot(
+        thumbTip.x - indexTip.x, 
+        thumbTip.y - indexTip.y,
+        thumbTip.z - indexTip.z // 增加Z轴，提升3D空间判定精度
+    );
+    // 设定Pinch阈值（0.05是经验值，可根据实际情况调整）
+    const pinchThreshold = 0.05;
+    // 判定：是否捏合（Pinch）
+    const isPinching = pinchDistance < pinchThreshold;
             // 计算指尖到手腕距离
             const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
             const dMiddle = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
@@ -964,27 +977,28 @@ function addTipPhotoAsParticles(texture) {
 
             // --- 状态机切换逻辑 ---
 
-            // 1. FOCUS 模式 (指点 -> 切换照片/聚焦星星)
-            if (isPointing) {
-                STATE.mode = 'FOCUS';
-                const photos = particleSystem.filter(p => p.type === 'PHOTO');
+            // 1. FOCUS 模式 (Pinch捏合 -> 切换照片/聚焦星星)
+    if (isPinching) {
+        STATE.mode = 'FOCUS';
+        const photos = particleSystem.filter(p => p.type === 'PHOTO');
 
-                // 防抖动：只有刚开始指点的一瞬间切换目标
-                if (!STATE.wasPointing) {
-                    if (photos.length > 0) {
-                        STATE.currentPhotoIndex = (STATE.currentPhotoIndex + 1) % photos.length;
-                        STATE.focusTarget = photos[STATE.currentPhotoIndex].mesh;
-                    } else {
-                        STATE.focusTarget = STATE.starMesh;
-                    }
-                }
-                STATE.wasPointing = true;
-                
-                // 聚焦时停止手势旋转
-                STATE.hasPalmCenter = false;
-                STATE.spinVel.x *= 0.9;
-                STATE.spinVel.y *= 0.9;
+        // 防抖动：只有刚开始捏合的一瞬间切换目标
+        if (!STATE.wasPinching) { // 替换原有的wasPointing为wasPinching
+            if (photos.length > 0) {
+                STATE.currentPhotoIndex = (STATE.currentPhotoIndex + 1) % photos.length;
+                STATE.focusTarget = photos[STATE.currentPhotoIndex].mesh;
+            } else {
+                STATE.focusTarget = STATE.starMesh;
             }
+            console.log("Pinch捏合：切换聚焦目标");
+        }
+        STATE.wasPinching = true; // 记录捏合状态
+        
+        // 聚焦时停止手势旋转
+        STATE.hasPalmCenter = false;
+        STATE.spinVel.x *= 0.9;
+        STATE.spinVel.y *= 0.9;
+    }
 
             // 2. TREE / SCATTER 模式
             else {
