@@ -757,8 +757,8 @@ function addTipPhotoAsParticles(texture) {
             transparent: true,          // 开启透明（避免遮挡）
             depthWrite: false,          // 解决透明渲染层级问题
             metalness: 1.0,             // 模仿相框的高金属感（原0.9→1.0更贴近）
-            roughness: 0.2,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
-            emissiveIntensity: 0.05     // 微弱自发光
+            roughness: 0.1,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
+            emissiveIntensity: 0.2     // 微弱自发光
         });
 
         // 3.3 创建圆柱粒子网格
