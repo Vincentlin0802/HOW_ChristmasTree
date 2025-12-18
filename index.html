@@ -736,7 +736,7 @@ function addTipPhotoAsParticles(texture) {
     if (!img || !texture) return;
 
     // 2. 粒子基础配置（可自定义）
-    const particleCount = 100;  // 每张图片生成40个粒子
+    const particleCount = 100;  // 每张图片生成100个粒子
     const cylinderRadius = 0.3; // 圆柱半径
     const cylinderHeight = 0.2; // 圆柱高度（短圆柱）
     const scaleFactor = 6;      // 粒子缩放系数
@@ -754,7 +754,7 @@ function addTipPhotoAsParticles(texture) {
         // 3.2 创建材质（模仿相框的金属质感 + 透明/纹理配置）
         const material = new THREE.MeshStandardMaterial({
             map: texture,               // 绑定皮头照片纹理
-            transparent: true,          // 开启透明（避免遮挡）
+            transparent: false,          // 开启透明（避免遮挡）
             depthWrite: false,          // 解决透明渲染层级问题
             metalness: 1.0,             // 模仿相框的高金属感（原0.9→1.0更贴近）
             roughness: 0.1,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
