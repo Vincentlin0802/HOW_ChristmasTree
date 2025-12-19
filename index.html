@@ -941,7 +941,7 @@ function addTipPhotoAsParticles(texture) {
 function processGestures(lm) {
     STATE.hand.detected = true;
 
-    // ========== 1. 初始化全局变量（新增旋转冻结+粒子渲染保护） ==========
+    // ========== 1. 初始化全局变量 ==========
     if (typeof window.photoIndex === 'undefined') {
         window.photoIndex = 0; 
     }
@@ -1080,7 +1080,7 @@ function processGestures(lm) {
         }
 
     } else {
-        // ========== 6. 松开Pinch：解冻+回归全视角 ==========
+        // ========== 6. 松开Pinch：解冻+回归全视角（修复rotation.lerp bug） ==========
         if (isJustReleased) {
             // 解冻旋转
             STATE.spinVel.x = window.lockedSpinState.x;
@@ -1091,12 +1091,19 @@ function processGestures(lm) {
             console.log("🔥 松开Pinch，解冻所有状态");
         }
 
-        // 超平滑回归全视角
+        // 超平滑回归全视角（修复：Euler旋转不用lerp，改用线性插值）
         if (window.cameraOriginalState) {
             const posDistance = camera.position.distanceTo(window.cameraOriginalState.pos);
             if (posDistance > 0.3) {
+                // 位置用lerp（Vector3支持）
                 camera.position.lerp(window.cameraOriginalState.pos, window.focusConfig.backSpeed);
-                camera.rotation.lerp(window.cameraOriginalState.rot, window.focusConfig.backSpeed);
+                
+                // 修复bug：Euler旋转线性插值（不用lerp）
+                camera.rotation.x += (window.cameraOriginalState.rot.x - camera.rotation.x) * window.focusConfig.backSpeed;
+                camera.rotation.y += (window.cameraOriginalState.rot.y - camera.rotation.y) * window.focusConfig.backSpeed;
+                camera.rotation.z += (window.cameraOriginalState.rot.z - camera.rotation.z) * window.focusConfig.backSpeed;
+                
+                // 视野插值
                 camera.fov += (window.cameraOriginalState.fov - camera.fov) * window.focusConfig.backSpeed;
                 camera.updateProjectionMatrix();
                 console.log(`回归全视角，剩余距离：${posDistance.toFixed(2)}`);
