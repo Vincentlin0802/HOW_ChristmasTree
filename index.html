@@ -961,7 +961,7 @@ function processGestures(lm) {
     if (typeof window.cameraOriginalState === 'undefined') {
         window.cameraOriginalState = {
             pos: camera.position.clone(),
-            rot: camera.rotation.clone(),
+            rot: camera.rotation.clone(), // 保存欧拉角
             fov: camera.fov
         };
     }
@@ -1093,12 +1093,19 @@ function processGestures(lm) {
             }
         }
 
-        // 相机平滑回归
+        // 相机平滑回归（修复：欧拉角不能用lerp，改用手动插值）
         if (window.cameraOriginalState && !window.isSceneFrozen) {
             const posDistance = camera.position.distanceTo(window.cameraOriginalState.pos);
             if (posDistance > 0.5) {
+                // 位置插值（Vector3可以用lerp）
                 camera.position.lerp(window.cameraOriginalState.pos, window.focusConfig.backSpeed);
-                camera.rotation.lerp(window.cameraOriginalState.rot, window.focusConfig.backSpeed);
+                
+                // 旋转插值（欧拉角手动插值，修复报错核心！）
+                camera.rotation.x += (window.cameraOriginalState.rot.x - camera.rotation.x) * window.focusConfig.backSpeed;
+                camera.rotation.y += (window.cameraOriginalState.rot.y - camera.rotation.y) * window.focusConfig.backSpeed;
+                camera.rotation.z += (window.cameraOriginalState.rot.z - camera.rotation.z) * window.focusConfig.backSpeed;
+                
+                // 视野插值
                 camera.fov += (window.cameraOriginalState.fov - camera.fov) * window.focusConfig.backSpeed;
                 camera.updateProjectionMatrix();
             } else {
