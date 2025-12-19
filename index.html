@@ -1013,57 +1013,57 @@ function processGestures(lm) {
         console.log("无照片，聚焦星星");
     }
 
-    // 获取聚焦目标的世界坐标，并平滑过渡
-    const focusTargetPos = STATE.focusTarget ? STATE.focusTarget.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
-    camera.position.lerp(focusTargetPos, lerpSpeed); // 通过lerp平滑过渡
-    camera.lookAt(focusTargetPos); // 始终朝向聚焦物体
-}
+    // 聚焦时停止手势旋转
+    STATE.hasPalmCenter = false;
+    STATE.spinVel.x *= 0.9;
+    STATE.spinVel.y *= 0.9;
 
+    // 计算摄像机平滑过渡到聚焦目标
+    if (STATE.focusTarget) {
+        const focusTargetPos = STATE.focusTarget.getWorldPosition(new THREE.Vector3());
+        camera.position.lerp(focusTargetPos, 0.1); // 使用lerp平滑过渡到目标位置
+        camera.lookAt(focusTargetPos); // 始终朝向聚焦目标
+    }
+} else {
+    // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
+    STATE.wasPointing = false; // 兼容原有指点手势的状态重置
 
-        // 聚焦时停止手势旋转
+    if (isPalmOpen) {
+        // SCATTER模式：手掌张开 → 手动控制旋转
+        if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
+            STATE.palmCenter.x = palm.x;
+            STATE.palmCenter.y = palm.y;
+            STATE.hasPalmCenter = true;
+        }
+        STATE.mode = 'SCATTER';
+
+        // 计算相对位移控制旋转速度
+        const dx = palm.x - STATE.palmCenter.x;
+        const dy = palm.y - STATE.palmCenter.y;
+        const gain = CONFIG.gestures.sensitivity;
+        const maxSpeed = 3.0;
+
+        const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
+        const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
+
+        // 平滑速度变化
+        STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
+        STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
+    } else {
+        // TREE模式：手掌放松 → 自动旋转
+        STATE.mode = 'TREE';
         STATE.hasPalmCenter = false;
         STATE.spinVel.x *= 0.9;
         STATE.spinVel.y *= 0.9;
-    } else {
-        // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
-        STATE.wasPointing = false; // 兼容原有指点手势的状态重置
-
-        if (isPalmOpen) {
-            // SCATTER模式：手掌张开 → 手动控制旋转
-            if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
-                STATE.palmCenter.x = palm.x;
-                STATE.palmCenter.y = palm.y;
-                STATE.hasPalmCenter = true;
-            }
-            STATE.mode = 'SCATTER';
-
-            // 计算相对位移控制旋转速度
-            const dx = palm.x - STATE.palmCenter.x;
-            const dy = palm.y - STATE.palmCenter.y;
-            const gain = CONFIG.gestures.sensitivity;
-            const maxSpeed = 3.0;
-
-            const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
-            const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
-
-            // 平滑速度变化
-            STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
-            STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
-        } else {
-            // TREE模式：手掌放松 → 自动旋转
-            STATE.mode = 'TREE';
-            STATE.hasPalmCenter = false;
-            STATE.spinVel.x *= 0.9;
-            STATE.spinVel.y *= 0.9;
-        }
-
-
-        // 更新手的位置
-        const targetX = (palm.x - 0.5) * 3.0;
-        const targetY = (palm.y - 0.5) * 3.0;
-        STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
-        STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
     }
+
+    // 更新手的位置（仅非FOCUS模式下）
+    const targetX = (palm.x - 0.5) * 3.0;
+    const targetY = (palm.y - 0.5) * 3.0;
+    STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
+    STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
+}
+
 
     window.lastPinch = isPinching;
 }
