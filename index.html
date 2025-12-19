@@ -563,7 +563,6 @@ async function loadStoryPhotos() {
                 if (mode === 'SCATTER') {
                     target = this.posScatter;
                 } 
-                else if (mode === 'FOCUS') {
     // 聚焦模式：镜头飞到被选中的物体前，其他物体退后
     else if (mode === 'FOCUS') {
     // 聚焦模式：镜头飞到被选中的物体前，其他物体退后
@@ -571,23 +570,23 @@ async function loadStoryPhotos() {
         // 获取被选中物体的世界坐标
         const targetPosition = this.mesh.getWorldPosition(new THREE.Vector3());
 
-        // 将目标位置设置为被选中物体前面的相对位置
-        const camPos = targetPosition.clone().add(new THREE.Vector3(0, 0, CONFIG.camera.z - 15)); // 让相机保持一定的偏移，飞到物体前
-        target = camPos;
+        // 将相机的目标位置设置为物体前方
+        const camPos = targetPosition.clone().add(new THREE.Vector3(0, 0, CONFIG.camera.z - 15)); // 相机位置相对于物体进行偏移
+        target = camPos; // 设置相机飞向目标位置
 
-        // 设置镜头的飞行速度
-        lerpSpeed = 6.0;
+        lerpSpeed = 6.0; // 聚焦时飞得快一点
 
-        // 保持物体正对镜头
+        // 物体正对相机，确保物体始终面向镜头
         this.mesh.lookAt(camera.position);
 
-        // 设定物体的缩放
+        // 设置物体缩放，突出显示
         s = this.baseScale * 5.0;
     } else {
         target = this.posScatter;
         s = 0.01; // 其他粒子缩小
     }
 }
+
 
 
                 else if (mode === 'METEOR') {
