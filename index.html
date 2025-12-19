@@ -941,21 +941,22 @@ function addTipPhotoAsParticles(texture) {
 function processGestures(lm) {
     STATE.hand.detected = true;
 
-    // ========== 1. 初始化全局变量（终极冻结配置） ==========
+    // ========== 1. 初始化全局变量（精准定位配置） ==========
     if (typeof window.photoIndex === 'undefined') window.photoIndex = 0;
     if (typeof window.focusConfig === 'undefined') {
         window.focusConfig = {
-            photoFrontDistance: 8,      // 增大距离，避免粒子被裁剪
-            moveSpeed: 0.01,            // 极致慢速度，杜绝抖动
+            photoFrontDistance: 8,      // 照片正面距离（不穿透）
+            moveSpeed: 0.01,           // 极致慢速度，杜绝抖动
             backSpeed: 0.03,            // 回归速度
-            lockThreshold: 1.0,         // 大幅放宽锁定阈值
+            lockThreshold: 5.0,         // 大幅提高锁定阈值（防止过头）
             offsetAxis: 'z',
             offsetDir: -1,
-            pinchDebounceTime: 1000,    // 1秒防抖，彻底防误触
-            debug: true                 // 开启调试日志
+            pinchDebounceTime: 1000,    // 1秒防抖
+            debug: true                 
         };
     }
-    // 新增：深度冻结标记（彻底隔离旋转逻辑）
+    // 新增：精准定位标记
+    if (typeof window.isCameraLocked === 'undefined') window.isCameraLocked = false;
     if (typeof window.isDeepFrozen === 'undefined') window.isDeepFrozen = false;
     if (typeof window.lastPinchSwitchTime === 'undefined') window.lastPinchSwitchTime = 0;
     if (typeof window.lockedState === 'undefined') {
@@ -963,11 +964,7 @@ function processGestures(lm) {
             photos: [],
             particles: [],
             spin: { x: 0, y: 0, hasPalmCenter: false },
-            camera: {
-                far: camera.far,        // 备份相机裁剪面
-                near: camera.near,
-                fov: camera.fov
-            }
+            camera: { far: camera.far, near: camera.near, fov: camera.fov }
         };
     }
     if (typeof window.cameraTargetPos === 'undefined') window.cameraTargetPos = null;
@@ -979,11 +976,12 @@ function processGestures(lm) {
         };
     }
 
-    // ========== 2. 调试日志：打印关键状态（定位问题） ==========
+    // ========== 2. 调试日志 ==========
     const debug = window.focusConfig.debug;
-    if (debug && Date.now() % 500 === 0) { // 每500ms打印一次，避免刷屏
+    if (debug && Date.now() % 500 === 0) {
         console.log(`[调试] spinVel: x=${STATE.spinVel.x.toFixed(6)}, y=${STATE.spinVel.y.toFixed(6)}`);
         console.log(`[调试] camera: pos=${camera.position.z.toFixed(2)}, fov=${camera.fov.toFixed(1)}, far=${camera.far}`);
+        console.log(`[调试] 锁定状态: isCameraLocked=${window.isCameraLocked}, 剩余距离=${window.cameraTargetPos ? camera.position.distanceTo(window.cameraTargetPos).toFixed(2) : '无'}`);
         if (particleSystem.length > 0) {
             const firstParticle = particleSystem[0];
             console.log(`[调试] 首个粒子: visible=${firstParticle.mesh?.visible}, pos=${firstParticle.mesh?.position.z.toFixed(2)}`);
@@ -999,13 +997,13 @@ function processGestures(lm) {
     const pinkyTip = lm[20];
     const palm = lm[9]; 
 
-    // ========== 4. Pinch手势判定（极致稳定） ==========
+    // ========== 4. Pinch手势判定 ==========
     const pinchDistance = Math.hypot(
         thumbTip.x - indexTip.x, 
         thumbTip.y - indexTip.y,
         thumbTip.z - indexTip.z
     );
-    const pinchThreshold = 0.07; // 超大阈值，杜绝误触
+    const pinchThreshold = 0.07; 
     const isPinching = pinchDistance < pinchThreshold;
     
     if (typeof window.lastPinch === 'undefined') window.lastPinch = false;
@@ -1013,15 +1011,18 @@ function processGestures(lm) {
     const isJustReleased = window.lastPinch && !isPinching;
     const currentTime = Date.now();
 
-    // ========== 5. Pinch捏合：深度冻结（彻底解决抖动） ==========
+    // ========== 5. Pinch捏合：精准定位+无抖动 ==========
     if (isPinching) {
         STATE.mode = 'FOCUS';
         const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
 
-        // 刚Pinch瞬间：深度冻结所有逻辑
+        // 刚Pinch瞬间：初始化+冻结
         if (isJustPinched) {
             if (debug) console.log("[Pinch] 刚捏合，开始深度冻结");
             
+            // 重置锁定标记
+            window.isCameraLocked = false;
+
             // 1. 防抖切换照片
             if (photos.length > 0 && currentTime - window.lastPinchSwitchTime > window.focusConfig.pinchDebounceTime) {
                 window.photoIndex = (window.photoIndex + 1) % photos.length;
@@ -1029,17 +1030,22 @@ function processGestures(lm) {
                 window.lastPinchSwitchTime = currentTime;
                 console.log(`[Pinch] 切换到第 ${window.photoIndex} 张照片`);
 
-                // 计算目标位置（增大距离，避免粒子裁剪）
-                const photoPos = STATE.focusTarget.position.clone();
-                window.cameraTargetPos = photoPos.clone();
-                window.cameraTargetPos[window.focusConfig.offsetAxis] += 
-                    window.focusConfig.photoFrontDistance * window.focusConfig.offsetDir;
+                // 核心修复：精准计算照片正面（对齐照片中心）
+                const photoCenter = STATE.focusTarget.position.clone(); // 照片中心坐标
+                // 目标位置 = 照片中心 + 正面偏移（只在z轴，不穿透）
+                window.cameraTargetPos = new THREE.Vector3(
+                    photoCenter.x,          // x轴对齐照片中心
+                    photoCenter.y,          // y轴对齐照片中心
+                    photoCenter.z + window.focusConfig.photoFrontDistance * window.focusConfig.offsetDir // z轴正面偏移
+                );
+                console.log(`[Pinch] 照片中心: (${photoCenter.x.toFixed(2)}, ${photoCenter.y.toFixed(2)}, ${photoCenter.z.toFixed(2)})`);
+                console.log(`[Pinch] 目标位置: (${window.cameraTargetPos.x.toFixed(2)}, ${window.cameraTargetPos.y.toFixed(2)}, ${window.cameraTargetPos.z.toFixed(2)})`);
             } else if (photos.length === 0) {
                 STATE.focusTarget = STATE.starMesh;
                 console.log("[Pinch] 无照片，聚焦星星");
             }
 
-            // 2. 备份所有状态（粒子+旋转+相机）
+            // 2. 备份所有状态
             window.lockedState.photos = photos.map(p => ({
                 mesh: p.mesh,
                 pos: p.mesh.position.clone(),
@@ -1050,7 +1056,7 @@ function processGestures(lm) {
                 pos: p.mesh?.position ? p.mesh.position.clone() : null,
                 rot: p.mesh?.rotation ? p.mesh.rotation.clone() : null,
                 visible: p.mesh?.visible ?? true,
-                scale: p.mesh?.scale.clone() ?? new THREE.Vector3(1,1,1), // 备份缩放
+                scale: p.mesh?.scale.clone() ?? new THREE.Vector3(1,1,1),
                 frustumCulled: p.mesh?.frustumCulled ?? true
             }));
             window.lockedState.spin = {
@@ -1064,47 +1070,47 @@ function processGestures(lm) {
                 fov: camera.fov
             };
 
-            // 3. 彻底冻结旋转（核心！）
+            // 3. 彻底冻结旋转
             STATE.spinVel.x = 0;
             STATE.spinVel.y = 0;
             STATE.hasPalmCenter = false;
-            window.isDeepFrozen = true; // 标记深度冻结
+            window.isDeepFrozen = true;
 
-            // 4. 调整相机裁剪面（防止粒子消失）
-            camera.far = 1000; // 增大远裁剪面，包含所有粒子
-            camera.near = 0.1;  // 减小近裁剪面
+            // 4. 调整相机裁剪面
+            camera.far = 1000;
+            camera.near = 0.1;
             camera.updateProjectionMatrix();
             if (debug) console.log("[Pinch] 相机裁剪面调整：far=1000, near=0.1");
         }
 
-        // 持续Pinch：仅相机移动（无任何其他逻辑）
-        if (STATE.focusTarget && window.cameraTargetPos) {
+        // 持续Pinch：精准移动+锁定（无抖动）
+        if (STATE.focusTarget && window.cameraTargetPos && !window.isCameraLocked) {
             const currentDistance = camera.position.distanceTo(window.cameraTargetPos);
-            // 极致平滑移动（无抖动）
+            
+            // 未到锁定阈值：缓慢移动（无抖动）
             if (currentDistance > window.focusConfig.lockThreshold) {
-                // 手动线性插值，避免lerp的微小抖动
-                const dx = window.cameraTargetPos.x - camera.position.x;
-                const dy = window.cameraTargetPos.y - camera.position.y;
-                const dz = window.cameraTargetPos.z - camera.position.z;
-                camera.position.x += dx * window.focusConfig.moveSpeed;
-                camera.position.y += dy * window.focusConfig.moveSpeed;
-                camera.position.z += dz * window.focusConfig.moveSpeed;
-                
-                if (debug) console.log(`[Pinch] 靠近照片，剩余距离：${currentDistance.toFixed(2)}`);
+                // 修复：只向目标位置移动，不超界
+                const moveRatio = Math.min(window.focusConfig.moveSpeed, currentDistance / 100); // 动态减速
+                camera.position.lerp(window.cameraTargetPos, moveRatio);
+                console.log(`[Pinch] 靠近照片，剩余距离：${currentDistance.toFixed(2)}`);
             } else {
+                // 到达阈值：强制锁定位置（彻底无抖动）
                 camera.position.copy(window.cameraTargetPos);
-                if (debug) console.log("[Pinch] 视角锁定，无抖动");
-            }
-
-            // 固定朝向（只执行一次，避免每帧计算导致抖动）
-            if (!window.cameraLookAtSet) {
+                window.isCameraLocked = true;
+                // 强制朝向照片中心（只执行一次）
                 camera.lookAt(STATE.focusTarget.position);
-                window.cameraLookAtSet = true;
+                console.log(`[Pinch] ✅ 精准锁定照片正面，无抖动`);
             }
 
-            // 强制保留粒子视野
-            camera.fov = Math.max(camera.fov, 50); // 更大视野，包含更多粒子
+            // 固定视野
+            camera.fov = Math.max(camera.fov, 50);
             camera.updateProjectionMatrix();
+        }
+
+        // 锁定后：强制固定相机位置（杜绝任何抖动）
+        if (window.isCameraLocked) {
+            camera.position.copy(window.cameraTargetPos);
+            camera.lookAt(STATE.focusTarget.position);
         }
 
     } else {
@@ -1124,27 +1130,18 @@ function processGestures(lm) {
             
             // 解冻标记
             window.isDeepFrozen = false;
-            window.cameraLookAtSet = false; // 重置朝向标记
+            window.isCameraLocked = false; // 重置锁定标记
         }
 
-        // 回归全视角（极致平滑）
+        // 回归全视角（平滑无抖动）
         if (window.cameraOriginalState) {
             const posDistance = camera.position.distanceTo(window.cameraOriginalState.pos);
             if (posDistance > 0.5) {
-                // 手动线性回归，无抖动
-                const dx = window.cameraOriginalState.pos.x - camera.position.x;
-                const dy = window.cameraOriginalState.pos.y - camera.position.y;
-                const dz = window.cameraOriginalState.pos.z - camera.position.z;
-                camera.position.x += dx * window.focusConfig.backSpeed;
-                camera.position.y += dy * window.focusConfig.backSpeed;
-                camera.position.z += dz * window.focusConfig.backSpeed;
-
-                // 旋转回归（无抖动）
+                // 平滑回归
+                camera.position.lerp(window.cameraOriginalState.pos, window.focusConfig.backSpeed);
                 camera.rotation.x += (window.cameraOriginalState.rot.x - camera.rotation.x) * window.focusConfig.backSpeed;
                 camera.rotation.y += (window.cameraOriginalState.rot.y - camera.rotation.y) * window.focusConfig.backSpeed;
                 camera.rotation.z += (window.cameraOriginalState.rot.z - camera.rotation.z) * window.focusConfig.backSpeed;
-
-                // 视野回归
                 camera.fov += (window.cameraOriginalState.fov - camera.fov) * window.focusConfig.backSpeed;
                 camera.updateProjectionMatrix();
                 
@@ -1155,11 +1152,11 @@ function processGestures(lm) {
                 camera.fov = window.cameraOriginalState.fov;
                 camera.updateProjectionMatrix();
                 window.cameraTargetPos = null;
-                if (debug) console.log("[回归] 完全回归原始视角");
+                if (debug) console.log("[回归] ✅ 完全回归原始视角");
             }
         }
 
-        // ========== 7. 非Pinch时：正常手掌旋转（仅解冻后执行） ==========
+        // 非Pinch时：正常手掌旋转（仅解冻后执行）
         if (!window.isDeepFrozen) {
             STATE.wasPointing = false;
             const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
@@ -1202,9 +1199,9 @@ function processGestures(lm) {
         }
     }
 
-    // ========== 8. 深度冻结期间：强制固定所有（解决抖动+粒子消失） ==========
+    // ========== 7. 深度冻结期间：强制固定所有 ==========
     if (window.isDeepFrozen) {
-        // 1. 强制固定照片（无偏移）
+        // 1. 强制固定照片
         window.lockedState.photos.forEach(lock => {
             if (lock.mesh && lock.pos) {
                 lock.mesh.position.copy(lock.pos);
@@ -1213,19 +1210,14 @@ function processGestures(lm) {
             }
         });
 
-        // 2. 强制固定粒子（核心：粒子不消失）
+        // 2. 强制固定粒子
         window.lockedState.particles.forEach(lock => {
             if (lock.mesh && lock.pos) {
-                // 固定位置/旋转/缩放
                 lock.mesh.position.copy(lock.pos);
                 lock.mesh.rotation.copy(lock.rot);
                 lock.mesh.scale.copy(lock.scale);
-                
-                // 强制显示+关闭裁剪
                 lock.mesh.visible = lock.visible;
-                lock.mesh.frustumCulled = false; // 彻底关闭视锥体剔除
-                
-                // 强制设置材质（防止透明/隐藏）
+                lock.mesh.frustumCulled = false;
                 if (lock.mesh.material) {
                     lock.mesh.material.opacity = 1;
                     lock.mesh.material.visible = true;
@@ -1233,16 +1225,13 @@ function processGestures(lm) {
             }
         });
 
-        // 3. 强制冻结所有旋转相关（杜绝抖动）
+        // 3. 强制冻结旋转（杜绝任何抖动）
         STATE.spinVel.x = 0;
         STATE.spinVel.y = 0;
         STATE.hasPalmCenter = false;
-        camera.rotation.x = camera.rotation.x; // 强制不变化
-        camera.rotation.y = camera.rotation.y;
-        camera.rotation.z = camera.rotation.z;
     }
 
-    // ========== 9. 保存状态 ==========
+    // ========== 8. 保存状态 ==========
     window.lastPinch = isPinching;
 }
     
