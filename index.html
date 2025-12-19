@@ -1216,71 +1216,40 @@ function processGestures(lm) {
     }
 
     // ========== 8. 完全冻结期间：强制固定所有物体（杜绝抖动） ==========
-    if (window.isSceneCompletelyFrozen) {
-        // 强制固定照片位置和旋转
-        window.lockedState.photos.forEach(lock => {
-            if (lock.mesh && lock.pos) {
-                lock.mesh.position.copy(lock.pos);
-                lock.mesh.rotation.copy(lock.rot);
-                lock.mesh.visible = true;
+if (window.isSceneCompletelyFrozen) {
+    // 强制固定照片位置和旋转
+    window.lockedState.photos.forEach(lock => {
+        if (lock.mesh && lock.pos) {
+            lock.mesh.position.copy(lock.pos);
+            lock.mesh.rotation.copy(lock.rot);
+            lock.mesh.visible = true;
+        }
+    });
+
+    // 强制固定粒子（位置+旋转+显示）
+    window.lockedState.particles.forEach(lock => {
+        if (lock.mesh && lock.pos) {
+            lock.mesh.position.copy(lock.pos);
+            lock.mesh.rotation.copy(lock.rot);
+            lock.mesh.visible = lock.visible;
+            lock.mesh.frustumCulled = false;
+            if (lock.mesh.material) {
+                lock.mesh.material.opacity = 1;
+                lock.mesh.material.visible = true;
             }
-        });
+        }
+    });
 
-        // 强制固定粒子（位置+旋转+显示）
-        window.lockedState.particles.forEach(lock => {
-            if (lock.mesh && lock.pos) {
-                lock.mesh.position.copy(lock.pos);
-                lock.mesh.rotation.copy(lock.rot);
-                lock.mesh.visible = lock.visible;
-                lock.mesh.frustumCulled = false;
-                if (lock.mesh.material) {
-                    lock.mesh.material.opacity = 1;
-                    lock.mesh.material.visible = true;
-                }
-            }
-        });
+    // 强制冻结旋转（彻底杜绝任何抖动源）
+    STATE.spinVel.x = 0;
+    STATE.spinVel.y = 0;
+    STATE.hasPalmCenter = false;
 
-        // 强制冻结旋转（彻底杜绝任何抖动源）
-        STATE.spinVel.x = 0;
-        STATE.spinVel.y = 0;
-        STATE.hasPalmCenter = false;
-        
-
-    // ========== 9. 保存状态 ==========
-    window.lastPinch = isPinching;
+    // ✅ 相机不要冻结，让靠近照片的动画保持正常
+    // 不再设置 camera.matrixAutoUpdate = false;
 }
-        // ==========================================
-        // 8. 动画循环 & DOM 事件
-        // ==========================================
-       // 8. 动画循环 & DOM 事件
-        function animate() {
-            requestAnimationFrame(animate);
+// 不再在 else 里强制改回 camera.matrixAutoUpdate
 
-            const dt = clock.getDelta();
-            STATE.time = clock.elapsedTime;
-
-            // 计算输入源
-            let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
-            
-            // --- 全局旋转控制 ---
-            if (STATE.mode === 'TREE') {
-                // 自动慢自转
-                STATE.rotation.y -= 0.4 * dt; 
-                // 自动扶正 (解决朝向问题)
-                STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
-                // 随输入轻微摆动
-                mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
-            } 
-            else if (STATE.mode === 'SCATTER') {
-                STATE.rotation.y += STATE.spinVel.y * dt;
-                STATE.rotation.x += STATE.spinVel.x * dt;
-                // 阻尼效果
-                if (!STATE.hand.detected) {
-                    STATE.spinVel.x *= 0.95;
-                    STATE.spinVel.y *= 0.95;
-                }
-            }
-            // --- 已删除 HEART 模式的 else if 分支 ---
 
             // 应用旋转
             mainGroup.rotation.y = STATE.rotation.y;
