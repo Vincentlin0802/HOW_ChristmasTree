@@ -938,23 +938,23 @@ function addTipPhotoAsParticles(texture) {
 
         // 核心手势判断算法
        // 核心手势判断算法（终极修复：Pinch循环切换照片）
-// 核心手势判断算法（修复Pinch拉近时镜头抖动问题）
+// ======== 建议先在STATE中初始化相机相关状态（全局STATE定义处） ========
+// 新增相机控制状态
+STATE.camera = {
+    targetPosition: new THREE.Vector3(0, 0, 5), // 相机目标位置
+    targetScale: 1.0, // 相机目标缩放（或用fov）
+    currentPosition: new THREE.Vector3(0, 0, 5),
+    currentScale: 1.0,
+    lerpSpeed: 0.1 // 平滑插值速度
+};
+
+// ======== 修改后的processGestures函数 ========
 function processGestures(lm) {
     STATE.hand.detected = true;
 
     // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
     if (typeof window.photoIndex === 'undefined') {
         window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
-    }
-
-    // 初始化相机默认位置（如果未定义）
-    if (typeof window.cameraDefaultPosition === 'undefined') {
-        // 保存相机初始位置作为默认位置
-        window.cameraDefaultPosition = {
-            x: STATE.camera.position.x,
-            y: STATE.camera.position.y,
-            z: STATE.camera.position.z
-        };
     }
 
     // 获取关键点坐标 (0:手腕, 4:拇指尖, 8:食指尖, 9:掌心, 12:中指尖, 16:无名指尖, 20:小指尖)
@@ -989,7 +989,7 @@ function processGestures(lm) {
 
     // ========== 4. 核心状态机逻辑 ==========
     if (isPinching) {
-        // FOCUS模式：Pinch捏合 → 相机移动到照片位置/聚焦星星
+        // FOCUS模式：Pinch捏合 → 相机靠近选中的照片/星星
         STATE.mode = 'FOCUS';
         // 过滤有效照片（确保mesh存在）
         const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
@@ -1002,27 +1002,21 @@ function processGestures(lm) {
                 // 循环更新索引
                 window.photoIndex = (window.photoIndex + 1) % photos.length;
                 STATE.focusTarget = photos[window.photoIndex].mesh;
-                console.log("Pinch切换到：第", window.photoIndex, "张照片");
+                
+                // 关键修改：设置相机目标位置（朝向照片位置靠近）
+                const photoPos = STATE.focusTarget.position;
+                // 相机目标位置 = 照片位置 - 相机朝向的偏移（确保能看清照片）
+                STATE.camera.targetPosition.copy(photoPos).sub(new THREE.Vector3(0, 0, 2)); 
+                STATE.camera.targetScale = 1.5; // 靠近时稍微放大
+                console.log("Pinch切换到：第", window.photoIndex, "张照片，相机将移动到", STATE.camera.targetPosition);
             } else {
                 STATE.focusTarget = STATE.starMesh;
-                console.log("无照片，聚焦星星");
+                // 聚焦星星时的相机位置
+                const starPos = STATE.starMesh.position;
+                STATE.camera.targetPosition.copy(starPos).sub(new THREE.Vector3(0, 0, 2));
+                STATE.camera.targetScale = 1.2;
+                console.log("无照片，聚焦星星，相机将移动到", STATE.camera.targetPosition);
             }
-        }
-
-        // ========== 核心修改：相机移动到目标位置 ==========
-        if (STATE.focusTarget) {
-            // 目标位置：在照片/星星前方一点的位置，保证能看清
-            const targetPosition = new THREE.Vector3().copy(STATE.focusTarget.position);
-            // 相机朝向目标，位置在目标前方（z轴正方向）
-            targetPosition.z += 1.5; // 可调整这个值控制相机与照片的距离
-            targetPosition.y += 0.2; // 轻微抬高相机，视角更自然
-            
-            // 平滑移动相机
-            const smoothFactor = 0.1; // 平滑系数，越小越慢
-            STATE.camera.position.lerp(targetPosition, smoothFactor);
-            
-            // 让相机始终看向目标
-            STATE.camera.lookAt(STATE.focusTarget.position);
         }
 
         // 聚焦时停止手势旋转
@@ -1030,21 +1024,12 @@ function processGestures(lm) {
         STATE.spinVel.x *= 0.9;
         STATE.spinVel.y *= 0.9;
     } else {
-        // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转，相机回到默认位置
+        // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转 + 相机返回初始位置
         STATE.wasPointing = false; // 兼容原有指点手势的状态重置
 
-        // 相机回到默认位置
-        if (window.cameraDefaultPosition) {
-            const defaultPos = new THREE.Vector3(
-                window.cameraDefaultPosition.x,
-                window.cameraDefaultPosition.y,
-                window.cameraDefaultPosition.z
-            );
-            const smoothFactor = 0.05; // 相机返回默认位置的平滑系数
-            STATE.camera.position.lerp(defaultPos, smoothFactor);
-            // 恢复相机默认朝向（可根据你的场景调整）
-            STATE.camera.lookAt(0, 0, 0);
-        }
+        // 关键修改：非Pinch时，相机返回初始位置
+        STATE.camera.targetPosition.set(0, 0, 5); // 初始相机位置
+        STATE.camera.targetScale = 1.0; // 初始缩放
 
         if (isPalmOpen) {
             // SCATTER模式：手掌张开 → 手动控制旋转
@@ -1085,63 +1070,66 @@ function processGestures(lm) {
     // ========== 5. 保存上一帧Pinch状态（供下一帧判断） ==========
     window.lastPinch = isPinching;
 }
+
+// ======== 修改后的animate函数 ========
+function animate() {
+    requestAnimationFrame(animate);
+
+    const dt = clock.getDelta();
+    STATE.time = clock.elapsedTime;
+
+    // 计算输入源
+    let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
     
-        // ==========================================
-        // 8. 动画循环 & DOM 事件
-        // ==========================================
-       // 8. 动画循环 & DOM 事件
-        function animate() {
-            requestAnimationFrame(animate);
+    // --- 相机平滑移动逻辑（新增核心代码） ---
+    // 位置插值：currentPosition 向 targetPosition 平滑移动
+    STATE.camera.currentPosition.lerp(STATE.camera.targetPosition, STATE.camera.lerpSpeed);
+    // 应用到实际相机（假设你的相机变量是 camera，需替换为实际变量名）
+    camera.position.copy(STATE.camera.currentPosition);
+    
+    // 可选：相机缩放/视角调整（也可以用fov）
+    STATE.camera.currentScale = THREE.MathUtils.lerp(STATE.camera.currentScale, STATE.camera.targetScale, STATE.camera.lerpSpeed);
+    camera.scale.setScalar(STATE.camera.currentScale); // 或调整fov：camera.fov = 60 / STATE.camera.currentScale; camera.updateProjectionMatrix();
 
-            const dt = clock.getDelta();
-            STATE.time = clock.elapsedTime;
+    // --- 全局旋转控制 ---
+    if (STATE.mode === 'TREE') {
+        // 自动慢自转
+        STATE.rotation.y -= 0.4 * dt; 
+        // 自动扶正 (解决朝向问题)
+        STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
+        // 随输入轻微摆动
+        mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
+    } 
+    else if (STATE.mode === 'SCATTER') {
+        STATE.rotation.y += STATE.spinVel.y * dt;
+        STATE.rotation.x += STATE.spinVel.x * dt;
+        // 阻尼效果
+        if (!STATE.hand.detected) {
+            STATE.spinVel.x *= 0.95;
+            STATE.spinVel.y *= 0.95;
+        }
+    }
 
-            // 计算输入源
-            let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
-            
-            // --- 全局旋转控制 ---
-            if (STATE.mode === 'TREE') {
-                // 自动慢自转
-                STATE.rotation.y -= 0.4 * dt; 
-                // 自动扶正 (解决朝向问题)
-                STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
-                // 随输入轻微摆动
-                mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
-            } 
-            else if (STATE.mode === 'SCATTER') {
-                STATE.rotation.y += STATE.spinVel.y * dt;
-                STATE.rotation.x += STATE.spinVel.x * dt;
-                // 阻尼效果
-                if (!STATE.hand.detected) {
-                    STATE.spinVel.x *= 0.95;
-                    STATE.spinVel.y *= 0.95;
-                }
-            }
-            // --- 已删除 HEART 模式的 else if 分支 ---
+    // 应用旋转
+    mainGroup.rotation.y = STATE.rotation.y;
+    mainGroup.rotation.x = STATE.rotation.x;
+    bgGroup.rotation.y -= 0.05 * dt;
 
-            // 应用旋转
-            mainGroup.rotation.y = STATE.rotation.y;
-            mainGroup.rotation.x = STATE.rotation.x;
-            bgGroup.rotation.y -= 0.05 * dt;
+    // 树顶星星动画
+    if (STATE.starMesh) {
+        STATE.starMesh.rotation.y -= dt;
+        STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
+        const scale = 1.0 + Math.sin(STATE.time * 2) * 0.1;
+        STATE.starMesh.scale.set(scale, scale, scale);
+    }
 
-            // 树顶星星动画
-            if (STATE.starMesh) {
-                STATE.starMesh.rotation.y -= dt;
-                STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
-                const scale = 1.0 + Math.sin(STATE.time * 2) * 0.1;
-                STATE.starMesh.scale.set(scale, scale, scale);
-            }
-
-            // 更新所有粒子（添加冻结判断）
-// 更新所有粒子（Pinch时冻结粒子更新）
-
+    // 更新所有粒子
     for(let i=0, l=particleSystem.length; i<l; i++){
         particleSystem[i].update(dt, STATE.time, STATE.mode, STATE.focusTarget);
+    }
 
+    composer.render();
 }
-
-            composer.render();
-        }
 
         function setupEvents() {
             // 窗口调整
