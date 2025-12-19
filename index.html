@@ -937,7 +937,7 @@ function processGestures(lm) {
     if (typeof window.focusConfig === 'undefined') {
         window.focusConfig = {
             photoFrontDistance: 8,      // 相机到照片正面的距离（不穿透）
-            moveSpeed: 0.002,           // 极致慢速，杜绝移动抖动
+            moveSpeed: 0.01,           // 极致慢速，杜绝移动抖动
             backSpeed: 0.03,            // 回归速度
             lockThreshold: 5.0,         // 距离阈值，到达后完全锁定
             offsetAxis: 'z',
@@ -1026,19 +1026,20 @@ function processGestures(lm) {
                 console.log(`[Pinch] 切换到第 ${window.photoIndex} 张照片`);
 
                 // 核心修复：以照片中心为基准，计算相机目标位置
-                const photoCenter = STATE.focusTarget.position.clone();
-                // 目标位置 = 照片中心 + 正面偏移向量（只沿相机视线方向）
-                const offsetVector = new THREE.Vector3(0, 0, window.focusConfig.photoFrontDistance * window.focusConfig.offsetDir);
-                // 将偏移向量转换到世界坐标系，确保始终在照片正面
-                offsetVector.applyQuaternion(STATE.focusTarget.quaternion);
-                window.cameraTargetPos = photoCenter.add(offsetVector);
+const photoCenter = STATE.focusTarget.position.clone();
+console.log(`[调试] 照片中心位置: (${photoCenter.x.toFixed(4)}, ${photoCenter.y.toFixed(4)}, ${photoCenter.z.toFixed(4)})`);
 
-                console.log(`[Pinch] 照片中心: (${photoCenter.x.toFixed(4)}, ${photoCenter.y.toFixed(4)}, ${photoCenter.z.toFixed(4)})`);
-                console.log(`[Pinch] 相机目标: (${window.cameraTargetPos.x.toFixed(4)}, ${window.cameraTargetPos.y.toFixed(4)}, ${window.cameraTargetPos.z.toFixed(4)})`);
-            } else if (photos.length === 0) {
-                STATE.focusTarget = STATE.starMesh;
-                console.log("[Pinch] 无照片，聚焦星星");
-            }
+// 目标位置 = 照片中心 + 正面偏移向量（只沿相机视线方向）
+// 通过调整 photoFrontDistance 来确保相机与照片之间的固定距离
+const offsetVector = new THREE.Vector3(0, 0, window.focusConfig.photoFrontDistance * window.focusConfig.offsetDir);
+
+// 将偏移向量转换到世界坐标系，确保相机始终在照片正面
+offsetVector.applyQuaternion(STATE.focusTarget.quaternion);  // 旋转偏移量，确保相机始终在照片前方
+window.cameraTargetPos = photoCenter.add(offsetVector); // 最终的目标位置
+
+// 调试：输出计算的目标位置，查看是否正确
+console.log(`[调试] 计算后的相机目标位置: (${window.cameraTargetPos.x.toFixed(4)}, ${window.cameraTargetPos.y.toFixed(4)}, ${window.cameraTargetPos.z.toFixed(4)})`);
+
 
             // 2. 备份所有物体状态（禁止自动更新矩阵）
             window.lockedState.photos = photos.map(p => ({
