@@ -1035,9 +1035,10 @@ function processGestures(lm) {
                 console.log(`[Pinch] 切换到第 ${window.photoIndex} 张照片`);
 
                 // 核心修复：以照片中心为基准，计算相机目标位置
+				const distanceToPhoto = 8;
                 const photoCenter = STATE.focusTarget.position.clone();
                 // 目标位置 = 照片中心 + 正面偏移向量（只沿相机视线方向）
-                const offsetVector = new THREE.Vector3(0, 0, window.focusConfig.photoFrontDistance * window.focusConfig.offsetDir);
+                const offsetVector = new THREE.Vector3(0, 0, distanceToPhoto);
                 // 将偏移向量转换到世界坐标系，确保始终在照片正面
                 offsetVector.applyQuaternion(STATE.focusTarget.quaternion);
                 window.cameraTargetPos = photoCenter.add(offsetVector);
@@ -1101,25 +1102,27 @@ function processGestures(lm) {
         }
 
         // 持续Pinch：相机只向照片中心移动，到达后完全锁定
-        if (STATE.focusTarget && window.cameraTargetPos && !window.isCameraLocked) {
-            const currentDistance = camera.position.distanceTo(window.cameraTargetPos);
-            
-            if (currentDistance > window.focusConfig.lockThreshold) {
-                // 超平滑移动：使用lerp+阻尼，杜绝微小抖动
-                camera.position.lerp(window.cameraTargetPos, window.focusConfig.moveSpeed* 0.5);
-                // 强制相机始终朝向照片中心
-                camera.lookAt(STATE.focusTarget.position);
-				camera.updateProjectionMatrix(); // 确保投影矩阵平滑更新
-				camera.updateMatrixWorld(true);
-                console.log(`[Pinch] 靠近照片中心，剩余距离：${currentDistance.toFixed(4)}`);
-            } else {
-                // 到达阈值：强制固定相机位置和朝向（彻底无抖动）
-                camera.position.copy(window.cameraTargetPos);
-                camera.lookAt(STATE.focusTarget.position);
-                window.isCameraLocked = true;
-				camera.updateMatrixWorld(true);
-                console.log(`[Pinch] ✅ 精准锁定照片中心，无任何抖动`);
-            }
+if (STATE.focusTarget && window.cameraTargetPos && !window.isCameraLocked) {
+    const currentDistance = camera.position.distanceTo(window.cameraTargetPos);
+
+    if (currentDistance > window.focusConfig.lockThreshold) {
+        // 使用lerp进行平滑移动，并应用缓冲区和更慢的速度
+        const smoothSpeed = Math.min(window.focusConfig.moveSpeed * 0.5, 0.1);  // 控制速度，避免过快
+        camera.position.lerp(window.cameraTargetPos, smoothSpeed);
+        camera.lookAt(STATE.focusTarget.position);
+        camera.updateProjectionMatrix(); // 确保投影矩阵平滑更新
+        camera.updateMatrixWorld(true);
+        console.log(`[Pinch] 靠近照片中心，剩余距离：${currentDistance.toFixed(4)}`);
+    } else {
+        // 到达阈值后锁定相机位置和朝向
+        camera.position.copy(window.cameraTargetPos);
+        camera.lookAt(STATE.focusTarget.position);
+        window.isCameraLocked = true;
+        camera.updateMatrixWorld(true);
+        console.log(`[Pinch] ✅ 精准锁定照片中心，无任何抖动`);
+    }
+}
+
 
             // 固定视野，确保粒子可见
             camera.fov = Math.max(camera.fov, 50);
