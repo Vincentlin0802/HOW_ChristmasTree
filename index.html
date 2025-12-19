@@ -563,24 +563,21 @@ async function loadStoryPhotos() {
                 if (mode === 'SCATTER') {
                     target = this.posScatter;
                 } 
-                // ========== 关键修改：删除FOCUS模式的位移逻辑 ==========
-        // 注释/删除原FOCUS模式的代码块
-        // else if (mode === 'FOCUS') {
-        //     // 聚焦模式：被选中的物体飞到镜头前，其他的退后
-        //     if (this.mesh === focusTargetMesh) {
-        //         // 将世界坐标下的镜头前位置转换到 Group 局部坐标
-        //         const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
-        //         const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
-        //         target = camPos.applyMatrix4(invMatrix);
-        //         lerpSpeed = 6.0; // 聚焦时飞得快一点
-        //         this.mesh.lookAt(camera.position);
-        //         s = this.baseScale * 5.0;
-        //     } else {
-        //         target = this.posScatter;
-        //         s = 0.01; // 其他粒子缩小
-        //     }
-        // }
-        // ======================================================
+                else if (mode === 'FOCUS') {
+                    // 聚焦模式：被选中的物体飞到镜头前，其他的退后
+                    if (this.mesh === focusTargetMesh) {
+                        // 将世界坐标下的镜头前位置转换到 Group 局部坐标
+                        const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
+                        const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
+                        target = camPos.applyMatrix4(invMatrix);
+                        lerpSpeed = 6.0; // 聚焦时飞得快一点
+                        this.mesh.lookAt(camera.position);
+						s = this.baseScale * 5.0;
+                    } else {
+                        target = this.posScatter;
+                        s = 0.01; // 其他粒子缩小
+                    }
+                } 
                 else if (mode === 'METEOR') {
                     // 流星雨模式逻辑 (保留接口，目前手势未触发)
                     target = this.posScatter; 
@@ -1112,13 +1109,11 @@ function processGestures(lm) {
                 camera.position.lerp(window.cameraTargetPos, window.focusConfig.moveSpeed);
                 // 强制相机始终朝向照片中心
                 camera.lookAt(STATE.focusTarget.position);
-				camera.updateMatrixWorld(true);
                 console.log(`[Pinch] 靠近照片中心，剩余距离：${currentDistance.toFixed(4)}`);
             } else {
                 // 到达阈值：强制固定相机位置和朝向（彻底无抖动）
                 camera.position.copy(window.cameraTargetPos);
                 camera.lookAt(STATE.focusTarget.position);
-				camera.updateMatrixWorld(true);
                 window.isCameraLocked = true;
                 console.log(`[Pinch] ✅ 精准锁定照片中心，无任何抖动`);
             }
@@ -1263,7 +1258,6 @@ function processGestures(lm) {
     // ========== 9. 保存状态 ==========
     window.lastPinch = isPinching;
 }
-
         // ==========================================
         // 8. 动画循环 & DOM 事件
         // ==========================================
