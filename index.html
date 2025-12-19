@@ -564,20 +564,11 @@ async function loadStoryPhotos() {
                     target = this.posScatter;
                 } 
                 else if (mode === 'FOCUS') {
-                    // 聚焦模式：被选中的物体飞到镜头前，其他的退后
-                    if (this.mesh === focusTargetMesh) {
-                        // 将世界坐标下的镜头前位置转换到 Group 局部坐标
-                        const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
-                        const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
-                        target = camPos.applyMatrix4(invMatrix);
-                        lerpSpeed = 6.0; // 聚焦时飞得快一点
-                        this.mesh.lookAt(camera.position);
-						s = this.baseScale * 5.0;
-                    } else {
-                        target = this.posScatter;
-                        s = 0.01; // 其他粒子缩小
-                    }
-                } 
+    // FOCUS模式下：物体位置完全固定在分散位置，不做任何位移/缩放
+    target = this.posScatter;
+    // 强制保持原始缩放，不缩小/放大
+    s = this.baseScale;
+}
                 else if (mode === 'METEOR') {
                     // 流星雨模式逻辑 (保留接口，目前手势未触发)
                     target = this.posScatter; 
@@ -1098,7 +1089,7 @@ function processGestures(lm) {
             STATE.spinVel.x = 0;
             STATE.spinVel.y = 0;
             STATE.hasPalmCenter = false;
-        }
+        
 
         // 持续Pinch：相机只向照片中心移动，到达后完全锁定
         if (STATE.focusTarget && window.cameraTargetPos && !window.isCameraLocked) {
