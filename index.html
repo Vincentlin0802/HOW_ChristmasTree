@@ -941,12 +941,31 @@ function addTipPhotoAsParticles(texture) {
 function processGestures(lm) {
     STATE.hand.detected = true;
 
-    // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
+    // ========== 1. 初始化全局变量（仅核心必要变量） ==========
     if (typeof window.photoIndex === 'undefined') {
-        window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
+        window.photoIndex = 0; 
     }
+    // 新增：聚焦配置+锁定标记（核心）
+    if (typeof window.focusConfig === 'undefined') {
+        window.focusConfig = {
+            targetDistance: 8,    // 相机到照片的距离（拉近的目标距离）
+            moveSpeed: 0.15,      // 视角拉近速度（平缓不头晕）
+            lockThreshold: 1.0,   // 锁定阈值（距离小于1则锁定位置）
+            offsetAxis: 'z',      // 相机偏移轴（z轴向后）
+            offsetDir: -1         // 偏移方向
+        };
+    }
+    // 新增：位置锁定标记+备份（锁定照片/粒子位置用）
+    if (typeof window.sceneLocked === 'undefined') window.sceneLocked = false;
+    if (typeof window.lockedPositions === 'undefined') {
+        window.lockedPositions = {
+            photos: [],   // 备份照片位置
+            particles: [] // 备份所有粒子位置
+        };
+    }
+    if (typeof window.cameraTargetPos === 'undefined') window.cameraTargetPos = null;
 
-    // 获取关键点坐标 (0:手腕, 4:拇指尖, 8:食指尖, 9:掌心, 12:中指尖, 16:无名指尖, 20:小指尖)
+    // ========== 2. 获取关键点坐标 ==========
     const wrist = lm[0];
     const thumbTip = lm[4];
     const indexTip = lm[8];
@@ -955,7 +974,7 @@ function processGestures(lm) {
     const pinkyTip = lm[20];
     const palm = lm[9]; 
 
-    // ========== 2. Pinch手势判定（拇指+食指捏合） ==========
+    // ========== 3. Pinch手势判定 ==========
     const pinchDistance = Math.hypot(
         thumbTip.x - indexTip.x, 
         thumbTip.y - indexTip.y,
@@ -964,11 +983,11 @@ function processGestures(lm) {
     const pinchThreshold = 0.05;
     const isPinching = pinchDistance < pinchThreshold;
     
-    // 记录上一帧Pinch状态（全局变量，避免丢失）
     if (typeof window.lastPinch === 'undefined') window.lastPinch = false;
-    const isJustPinched = !window.lastPinch && isPinching;
+    const isJustPinched = !window.lastPinch && isPinching; // 刚捏合瞬间
+    const isJustReleased = window.lastPinch && !isPinching; // 刚松开瞬间
 
-    // ========== 3. 手掌张开程度判定（用于TREE/SCATTER模式） ==========
+    // ========== 4. 手掌张开程度判定 ==========
     const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
     const dMiddle = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
     const dRing = Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y);
@@ -976,36 +995,77 @@ function processGestures(lm) {
     const avgSpread = (dIndex + dMiddle + dRing + dPinky) / 4;
     const isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
 
-    // ========== 4. 核心状态机逻辑 ==========
+    // ========== 5. 核心逻辑：Pinch捏合（聚焦+锁定） ==========
     if (isPinching) {
-        // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
         STATE.mode = 'FOCUS';
-        // 过滤有效照片（确保mesh存在）
         const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
         console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
         console.log("当前全局索引：", window.photoIndex);
 
-        // 只在「刚捏合」的瞬间切换目标（防抖动）
-        if (isJustPinched && photos.length > 0) {
-            // 循环更新索引
-            window.photoIndex = (window.photoIndex + 1) % photos.length;
-            STATE.focusTarget = photos[window.photoIndex].mesh;
-            console.log("Pinch切换到：第", window.photoIndex, "张照片");
-        } else if (photos.length === 0) {
-            STATE.focusTarget = STATE.starMesh;
-            console.log("无照片，聚焦星星");
+        // 刚捏合瞬间：初始化聚焦目标+备份位置
+        if (isJustPinched) {
+            if (photos.length > 0) {
+                // 切换照片索引
+                window.photoIndex = (window.photoIndex + 1) % photos.length;
+                STATE.focusTarget = photos[window.photoIndex].mesh;
+                console.log("Pinch切换到：第", window.photoIndex, "张照片");
+
+                // 计算相机拉近的目标位置（照片位置向后偏移）
+                const photoPos = STATE.focusTarget.position.clone();
+                window.cameraTargetPos = photoPos.clone();
+                window.cameraTargetPos[window.focusConfig.offsetAxis] += 
+                    window.focusConfig.targetDistance * window.focusConfig.offsetDir;
+                
+                // 备份所有照片+粒子的位置（用于锁定）
+                window.lockedPositions.photos = photos.map(p => ({
+                    mesh: p.mesh,
+                    pos: p.mesh.position.clone(),
+                    rot: p.mesh.rotation.clone()
+                }));
+                window.lockedPositions.particles = particleSystem.map(p => ({
+                    mesh: p.mesh,
+                    pos: p.mesh?.position ? p.mesh.position.clone() : null,
+                    rot: p.mesh?.rotation ? p.mesh.rotation.clone() : null
+                }));
+            } else {
+                STATE.focusTarget = STATE.starMesh;
+                console.log("无照片，聚焦星星");
+            }
         }
 
-        // 聚焦时停止手势旋转
+        // 持续Pinch：视角主动拉近到照片 + 锁定位置
+        if (STATE.focusTarget && window.cameraTargetPos) {
+            // 1. 视角拉近：相机向目标位置移动
+            const currentDistance = camera.position.distanceTo(window.cameraTargetPos);
+            if (currentDistance > window.focusConfig.lockThreshold) {
+                camera.position.lerp(window.cameraTargetPos, window.focusConfig.moveSpeed);
+                console.log(`视角拉近中，剩余距离：${currentDistance.toFixed(2)}`);
+            } else {
+                // 2. 距离达标：锁定照片+所有粒子位置
+                window.sceneLocked = true;
+                console.log("✅ 锁定照片+所有粒子位置，视角固定");
+            }
+
+            // 强制相机朝向照片
+            camera.lookAt(STATE.focusTarget.position);
+        }
+
+        // 聚焦时停止旋转
         STATE.hasPalmCenter = false;
         STATE.spinVel.x *= 0.9;
         STATE.spinVel.y *= 0.9;
     } else {
-        // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
-        STATE.wasPointing = false; // 兼容原有指点手势的状态重置
+        // ========== 6. 非Pinch状态：恢复场景 ==========
+        // 刚松开Pinch：解锁位置
+        if (isJustReleased) {
+            window.sceneLocked = false;
+            window.cameraTargetPos = null;
+            console.log("🔓 解锁照片+粒子位置，恢复场景");
+        }
 
+        // TREE/SCATTER模式：手掌控制旋转
+        STATE.wasPointing = false;
         if (isPalmOpen) {
-            // SCATTER模式：手掌张开 → 手动控制旋转
             if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
                 STATE.palmCenter.x = palm.x;
                 STATE.palmCenter.y = palm.y;
@@ -1013,7 +1073,6 @@ function processGestures(lm) {
             }
             STATE.mode = 'SCATTER';
 
-            // 计算相对位移控制旋转速度
             const dx = palm.x - STATE.palmCenter.x;
             const dy = palm.y - STATE.palmCenter.y;
             const gain = CONFIG.gestures.sensitivity;
@@ -1022,25 +1081,51 @@ function processGestures(lm) {
             const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
             const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
 
-            // 平滑速度变化
             STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
             STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
         } else {
-            // TREE模式：手掌放松 → 自动旋转
             STATE.mode = 'TREE';
             STATE.hasPalmCenter = false;
             STATE.spinVel.x *= 0.9;
             STATE.spinVel.y *= 0.9;
         }
 
-        // 更新手的位置（仅非FOCUS模式下）
+        // 更新手的位置
         const targetX = (palm.x - 0.5) * 3.0;
         const targetY = (palm.y - 0.5) * 3.0;
         STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
         STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
+
+        // 松开后：相机缓慢回到初始视角（可选，根据需求保留）
+        if (window.cameraOriginalPos && isJustReleased) {
+            camera.position.lerp(window.cameraOriginalPos, 0.1);
+        }
     }
 
-    // ========== 5. 保存上一帧Pinch状态（供下一帧判断） ==========
+    // ========== 7. 关键：锁定期间强制固定照片+粒子位置 ==========
+    if (window.sceneLocked) {
+        // 锁定所有照片位置
+        window.lockedPositions.photos.forEach(lock => {
+            if (lock.mesh && lock.pos) {
+                lock.mesh.position.copy(lock.pos);
+                lock.mesh.rotation.copy(lock.rot);
+            }
+        });
+        // 锁定所有粒子位置
+        window.lockedPositions.particles.forEach(lock => {
+            if (lock.mesh && lock.pos) {
+                lock.mesh.position.copy(lock.pos);
+                if (lock.rot) lock.mesh.rotation.copy(lock.rot);
+            }
+        });
+    }
+
+    // ========== 8. 初始化相机初始位置（仅一次） ==========
+    if (typeof window.cameraOriginalPos === 'undefined') {
+        window.cameraOriginalPos = camera.position.clone();
+    }
+
+    // ========== 9. 保存上一帧Pinch状态 ==========
     window.lastPinch = isPinching;
 }
         // ==========================================
