@@ -939,14 +939,7 @@ function addTipPhotoAsParticles(texture) {
         // 核心手势判断算法
        // 核心手势判断算法（终极修复：Pinch循环切换照片）
 // ======== 建议先在STATE中初始化相机相关状态（全局STATE定义处） ========
-// 新增相机控制状态
-STATE.camera = {
-    targetPosition: new THREE.Vector3(0, 0, 5), // 相机目标位置
-    targetScale: 1.0, // 相机目标缩放（或用fov）
-    currentPosition: new THREE.Vector3(0, 0, 5),
-    currentScale: 1.0,
-    lerpSpeed: 0.1 // 平滑插值速度
-};
+
 
 // ======== 修改后的processGestures函数 ========
 function processGestures(lm) {
