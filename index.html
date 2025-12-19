@@ -941,7 +941,7 @@ function addTipPhotoAsParticles(texture) {
 function processGestures(lm) {
     STATE.hand.detected = true;
 
-    // ========== 1. 初始化全局变量（极简稳定版） ==========
+    // ========== 1. 初始化全局变量（修复作用域+防卡顿） ==========
     if (typeof window.photoIndex === 'undefined') window.photoIndex = 0;
     if (typeof window.cameraOriginalState === 'undefined') {
         window.cameraOriginalState = {
@@ -950,162 +950,186 @@ function processGestures(lm) {
             fov: camera.fov
         };
     }
-    // 核心控制标记（仅3个，避免状态混乱）
+    // 核心控制标记（初始化所有备份变量，避免未定义）
     if (typeof window.isSceneFrozen === 'undefined') window.isSceneFrozen = false;
-    if (typeof window.focusCameraTargetPos === 'undefined') window.focusCameraTargetPos = null; // 相机唯一目标位置
-    if (typeof window.sceneBackupDone === 'undefined') window.sceneBackupDone = false; // 仅备份一次
+    if (typeof window.focusCameraTargetPos === 'undefined') window.focusCameraTargetPos = null;
+    if (typeof window.sceneBackupDone === 'undefined') window.sceneBackupDone = false;
+    if (typeof window.sceneBackup === 'undefined') window.sceneBackup = { particles: [], photos: [] }; // 提前初始化
 
-    // 聚焦配置（极致稳定+平缓）
+    // 聚焦配置（极致稳定）
     const FOCUS_CONFIG = {
-        photoFrontDistance: 4,    // 相机停在照片"前面"（朝向照片的一侧）的距离
-        focusSpeed: 0.05,         // 超慢速度（0.05，完全无抖动）
+        photoFrontDistance: 4,    
+        focusSpeed: 0.05,         
         restoreSpeed: 0.08,       
         offsetAxis: 'z',          
-        offsetDirection: -1,      // 确保相机在照片"前面"（z轴负方向=照片前方）
-        focusFov: 70              // 适度增大视野，避免变形
+        offsetDirection: -1,      
+        focusFov: 70              
     };
 
-    // ========== 2. 手势关键点（仅保留核心） ==========
+    // ========== 2. 手势关键点 ==========
     const thumbTip = lm[4];
     const indexTip = lm[8];
     const palm = lm[9]; 
 
-    // ========== 3. Pinch判定（极简，避免波动） ==========
+    // ========== 3. Pinch判定（简化，防误触发） ==========
     const pinchDistance = Math.hypot(
         thumbTip.x - indexTip.x, 
         thumbTip.y - indexTip.y,
         thumbTip.z - indexTip.z
     );
-    const isPinching = pinchDistance < 0.05; // 判定阈值不修改，避免误触发
-    const isJustReleased = window.lastPinch && !isPinching; // 仅松开瞬间触发一次
-    window.lastPinch = isPinching; // 简化状态保存
+    const isPinching = pinchDistance < 0.05; 
+    const isJustReleased = window.lastPinch && !isPinching; 
+    window.lastPinch = isPinching;
 
-    // ========== 4. 核心：提前冻结场景（无延迟） ==========
+    // ========== 4. 核心：修复作用域的冻结逻辑（防卡顿） ==========
     if (isPinching && !window.isSceneFrozen) {
-        // 第一步：冻结场景（仅执行一次）
+        // 第一步：冻结场景
         window.isSceneFrozen = true;
-        window.sceneBackupDone = false; // 重置备份标记
-        
-        // 第二步：备份所有粒子/照片状态（仅备份一次，避免重复赋值抖动）
-        const backupParticles = particleSystem.map(p => ({
-            mesh: p.mesh,
-            pos: p.mesh?.position.clone(),
-            rot: p.mesh?.rotation.clone()
-        }));
-        const backupPhotos = particleSystem.filter(p => p.type === 'PHOTO').map(p => ({
-            mesh: p.mesh,
-            pos: p.mesh.position.clone(),
-            rot: p.mesh.rotation.clone()
-        }));
-        // 强制停止场景旋转
+        window.sceneBackupDone = false;
         STATE.spinVel.x = 0;
         STATE.spinVel.y = 0;
 
-        // 第三步：切换照片 + 计算相机唯一目标位置（照片正前方）
+        // 第二步：修复作用域 - 先定义备份变量再赋值（核心！）
+        let backupParticles = [];
+        let backupPhotos = [];
+        
+        // 安全备份：加try-catch防卡顿，只处理有mesh的粒子
+        try {
+            backupParticles = particleSystem.map(p => ({
+                mesh: p.mesh,
+                pos: p.mesh?.position ? p.mesh.position.clone() : new THREE.Vector3(),
+                rot: p.mesh?.rotation ? p.mesh.rotation.clone() : new THREE.Euler()
+            }));
+            
+            backupPhotos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh).map(p => ({
+                mesh: p.mesh,
+                pos: p.mesh.position.clone(),
+                rot: p.mesh.rotation.clone()
+            }));
+        } catch (e) {
+            console.warn("备份场景时出错：", e);
+            backupParticles = [];
+            backupPhotos = [];
+        }
+
+        // 第三步：保存备份到全局（修复作用域）
+        window.sceneBackup = { particles: backupParticles, photos: backupPhotos };
+
+        // 第四步：切换照片 + 计算相机目标位置（加安全判断）
         const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
         if (photos.length > 0) {
             window.photoIndex = (window.photoIndex + 1) % photos.length;
             const targetPhoto = photos[window.photoIndex].mesh;
-            const photoPos = targetPhoto.position.clone();
+            if (!targetPhoto) return; // 防空值卡顿
             
-            // 计算相机目标位置：照片正前方（offsetDirection=-1确保在前面）
+            const photoPos = targetPhoto.position.clone();
             window.focusCameraTargetPos = photoPos.clone();
             window.focusCameraTargetPos[FOCUS_CONFIG.offsetAxis] += FOCUS_CONFIG.photoFrontDistance * FOCUS_CONFIG.offsetDirection;
             
             console.log(`❄️ 冻结场景，聚焦第${window.photoIndex}张照片`);
             console.log(`📸 照片位置：x=${photoPos.x.toFixed(2)}, y=${photoPos.y.toFixed(2)}, z=${photoPos.z.toFixed(2)}`);
-            console.log(`🎥 相机目标位置（照片前）：x=${window.focusCameraTargetPos.x.toFixed(2)}, y=${window.focusCameraTargetPos.y.toFixed(2)}, z=${window.focusCameraTargetPos.z.toFixed(2)}`);
+            console.log(`🎥 相机目标位置：x=${window.focusCameraTargetPos.x.toFixed(2)}, y=${window.focusCameraTargetPos.y.toFixed(2)}, z=${window.focusCameraTargetPos.z.toFixed(2)}`);
         } else {
             window.focusCameraTargetPos = window.cameraOriginalState.pos;
             console.log("❄️ 冻结场景，无照片聚焦");
         }
     }
 
-    // ========== 5. 冻结期间：强制固定场景 + 相机单向平缓移动 ==========
+    // ========== 5. 冻结期间：安全固定场景 + 相机移动（防卡顿） ==========
     if (window.isSceneFrozen) {
         STATE.mode = 'FOCUS';
         
-        // 仅备份一次，避免重复赋值导致粒子抖动
+        // 仅备份一次，避免重复赋值
         if (!window.sceneBackupDone) {
-            window.sceneBackup = { particles: backupParticles, photos: backupPhotos };
-            window.sceneBackupDone = true;
+            window.sceneBackupDone = true; // 标记完成，不再执行
         }
 
-        // 强制所有粒子/照片固定在冻结位置（仅赋值一次，无重复波动）
-        window.sceneBackup.particles.forEach(backup => {
-            if (backup.mesh && backup.pos) {
-                backup.mesh.position.copy(backup.pos);
-                backup.mesh.rotation.copy(backup.rot);
-            }
-        });
-        window.sceneBackup.photos.forEach(backup => {
-            if (backup.mesh && backup.pos) {
-                backup.mesh.position.copy(backup.pos);
-                backup.mesh.rotation.copy(backup.rot);
-            }
-        });
+        // 安全固定粒子/照片：加判断，避免空值报错卡顿
+        if (window.sceneBackup.particles.length > 0) {
+            window.sceneBackup.particles.forEach(backup => {
+                if (backup.mesh && backup.pos) {
+                    backup.mesh.position.copy(backup.pos);
+                    backup.mesh.rotation.copy(backup.rot);
+                }
+            });
+        }
+        if (window.sceneBackup.photos.length > 0) {
+            window.sceneBackup.photos.forEach(backup => {
+                if (backup.mesh && backup.pos) {
+                    backup.mesh.position.copy(backup.pos);
+                    backup.mesh.rotation.copy(backup.rot);
+                }
+            });
+        }
 
-        // 增大视野，显示周边粒子
-        camera.fov = FOCUS_CONFIG.focusFov;
-        camera.updateProjectionMatrix();
+        // 增大视野（安全执行）
+        try {
+            camera.fov = FOCUS_CONFIG.focusFov;
+            camera.updateProjectionMatrix();
+        } catch (e) {
+            console.warn("更新相机视野出错：", e);
+        }
 
-        // 相机单向缓慢移动到目标位置（到达后停止，无回弹）
+        // 相机平缓移动（加安全判断，防空值卡顿）
         if (window.focusCameraTargetPos) {
             const distance = camera.position.distanceTo(window.focusCameraTargetPos);
-            if (distance > 0.1) { // 极小阈值，到达后停止移动
+            if (distance > 0.1) {
                 camera.position.lerp(window.focusCameraTargetPos, FOCUS_CONFIG.focusSpeed);
-                // 强制朝向照片中心
+                // 安全朝向照片
                 const targetPhoto = particleSystem.filter(p => p.type === 'PHOTO')[window.photoIndex]?.mesh;
                 if (targetPhoto) camera.lookAt(targetPhoto.position);
-                console.log(`🚶 相机平缓移动中，剩余距离：${distance.toFixed(2)}`);
+                console.log(`🚶 相机移动中，剩余距离：${distance.toFixed(2)}`);
             } else {
-                // 到达目标，强制固定相机位置
                 camera.position.copy(window.focusCameraTargetPos);
-                console.log("✅ 相机到达照片前，视角锁定");
+                console.log("✅ 相机锁定，无卡顿");
             }
         }
+        return; // 冻结期间跳过后续逻辑，防冲突卡顿
     }
 
-    // ========== 6. 松开Pinch：立即解冻 + 平缓恢复 ==========
+    // ========== 6. 松开Pinch：安全解冻 ==========
     if (isJustReleased) {
-        // 立即解冻场景
         window.isSceneFrozen = false;
         window.focusCameraTargetPos = null;
         window.sceneBackupDone = false;
-        console.log("🔥 解冻场景，恢复所有动态");
+        console.log("🔥 解冻场景，恢复动态");
 
-        // 恢复原始视野
-        camera.fov = window.cameraOriginalState.fov;
-        camera.updateProjectionMatrix();
+        // 恢复视野（安全执行）
+        try {
+            camera.fov = window.cameraOriginalState.fov;
+            camera.updateProjectionMatrix();
+        } catch (e) {
+            console.warn("恢复相机视野出错：", e);
+        }
     }
 
-    // ========== 7. 非冻结状态：恢复正常交互 ==========
+    // ========== 7. 非冻结状态：正常交互（加防卡顿优化） ==========
     if (!window.isSceneFrozen) {
-        // 手掌张开判定（仅非冻结时生效）
+        // 手掌张开判定（简化计算）
         const dIndex = Math.hypot(lm[8].x - lm[0].x, lm[8].y - lm[0].y);
         const dMiddle = Math.hypot(lm[12].x - lm[0].x, lm[12].y - lm[0].y);
         const dRing = Math.hypot(lm[16].x - lm[0].x, lm[16].y - lm[0].y);
         const dPinky = Math.hypot(lm[20].x - lm[0].x, lm[20].y - lm[0].y);
         const avgSpread = (dIndex + dMiddle + dRing + dPinky) / 4;
-        const isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
+        const isPalmOpen = avgSpread > CONFIG.gestures.sensitivity;
 
         STATE.mode = isPalmOpen ? 'SCATTER' : 'TREE';
         STATE.wasPointing = false;
 
-        // 平缓恢复相机初始视角
+        // 平缓恢复相机
         camera.position.lerp(window.cameraOriginalState.pos, FOCUS_CONFIG.restoreSpeed);
         camera.lookAt(window.cameraOriginalState.target);
 
-        // 恢复旋转控制
+        // 恢复旋转控制（加安全判断）
         if (isPalmOpen) {
             if (!STATE.hasPalmCenter) {
-                STATE.palmCenter.x = palm.x;
-                STATE.palmCenter.y = palm.y;
+                STATE.palmCenter.x = palm.x || 0;
+                STATE.palmCenter.y = palm.y || 0;
                 STATE.hasPalmCenter = true;
             }
             const dx = palm.x - STATE.palmCenter.x;
             const dy = palm.y - STATE.palmCenter.y;
-            const gain = CONFIG.gestures.sensitivity;
+            const gain = CONFIG.gestures.sensitivity || 0.5;
             const maxSpeed = 3.0;
             const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
             const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
@@ -1117,9 +1141,9 @@ function processGestures(lm) {
             STATE.spinVel.y *= 0.9;
         }
 
-        // 更新手的位置
-        const targetX = (palm.x - 0.5) * 3.0;
-        const targetY = (palm.y - 0.5) * 3.0;
+        // 更新手的位置（防NaN卡顿）
+        const targetX = (palm.x - 0.5) * 3.0 || 0;
+        const targetY = (palm.y - 0.5) * 3.0 || 0;
         STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
         STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
     }
