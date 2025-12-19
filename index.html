@@ -946,7 +946,7 @@ function processGestures(lm) {
     if (typeof window.focusConfig === 'undefined') {
         window.focusConfig = {
             photoFrontDistance: 8,      // 相机到照片正面的距离（不穿透）
-            moveSpeed: 0.002,           // 极致慢速，杜绝移动抖动
+            moveSpeed: 0.01,           // 极致慢速，杜绝移动抖动
             backSpeed: 0.03,            // 回归速度
             lockThreshold: 5.0,         // 距离阈值，到达后完全锁定
             offsetAxis: 'z',
@@ -1106,15 +1106,18 @@ function processGestures(lm) {
             
             if (currentDistance > window.focusConfig.lockThreshold) {
                 // 超平滑移动：使用lerp+阻尼，杜绝微小抖动
-                camera.position.lerp(window.cameraTargetPos, window.focusConfig.moveSpeed);
+                camera.position.lerp(window.cameraTargetPos, window.focusConfig.moveSpeed* 0.5);
                 // 强制相机始终朝向照片中心
                 camera.lookAt(STATE.focusTarget.position);
+				camera.updateProjectionMatrix(); // 确保投影矩阵平滑更新
+				camera.updateMatrixWorld(true);
                 console.log(`[Pinch] 靠近照片中心，剩余距离：${currentDistance.toFixed(4)}`);
             } else {
                 // 到达阈值：强制固定相机位置和朝向（彻底无抖动）
                 camera.position.copy(window.cameraTargetPos);
                 camera.lookAt(STATE.focusTarget.position);
                 window.isCameraLocked = true;
+				camera.updateMatrixWorld(true);
                 console.log(`[Pinch] ✅ 精准锁定照片中心，无任何抖动`);
             }
 
