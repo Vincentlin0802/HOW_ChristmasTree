@@ -1039,7 +1039,7 @@ window.cameraTargetPos = photoCenter.add(offsetVector); // 最终的目标位置
 
 // 调试：输出计算的目标位置，查看是否正确
 console.log(`[调试] 计算后的相机目标位置: (${window.cameraTargetPos.x.toFixed(4)}, ${window.cameraTargetPos.y.toFixed(4)}, ${window.cameraTargetPos.z.toFixed(4)})`);
-
+			}
 
             // 2. 备份所有物体状态（禁止自动更新矩阵）
             window.lockedState.photos = photos.map(p => ({
