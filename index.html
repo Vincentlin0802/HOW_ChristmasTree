@@ -941,27 +941,24 @@ function addTipPhotoAsParticles(texture) {
 function processGestures(lm) {
     STATE.hand.detected = true;
 
-    // ========== 1. 初始化全局变量（新增防抖+平滑配置） ==========
+    // ========== 1. 初始化全局变量 ==========
     if (typeof window.photoIndex === 'undefined') {
         window.photoIndex = 0; 
     }
-    // 核心优化：超平滑配置+Pinch防抖
     if (typeof window.focusConfig === 'undefined') {
         window.focusConfig = {
             photoFrontDistance: 6,      // 照片正面预留距离
-            moveSpeed: 0.03,            // 极慢拉近速度（0.03，比之前慢3倍）
+            moveSpeed: 0.03,            // 极慢拉近速度
             backSpeed: 0.05,            // 极慢回归速度
             lockThreshold: 0.3,         // 精准锁定阈值
             offsetAxis: 'z',            // 照片正面轴
             offsetDir: -1,              // 正面方向
-            pinchDebounceTime: 500,     // Pinch防抖时间（500ms内只切换一次）
-            minPinchHoldTime: 1000      // 最少捏合时间（1秒，确保能拉到照片）
+            pinchDebounceTime: 500      // Pinch防抖时间
         };
     }
-    // 新增：防抖标记+时间戳
+    // 核心标记：新增「全局冻结标记」（Pinch瞬间就冻结）
+    if (typeof window.isSceneFrozen === 'undefined') window.isSceneFrozen = false;
     if (typeof window.lastPinchSwitchTime === 'undefined') window.lastPinchSwitchTime = 0;
-    if (typeof window.pinchStartTime === 'undefined') window.pinchStartTime = 0;
-    if (typeof window.sceneLocked === 'undefined') window.sceneLocked = false;
     if (typeof window.lockedPositions === 'undefined') {
         window.lockedPositions = { photos: [], particles: [] };
     }
@@ -983,7 +980,7 @@ function processGestures(lm) {
     const pinkyTip = lm[20];
     const palm = lm[9]; 
 
-    // ========== 3. Pinch手势判定（新增防抖+稳定识别） ==========
+    // ========== 3. Pinch手势判定 ==========
     const pinchDistance = Math.hypot(
         thumbTip.x - indexTip.x, 
         thumbTip.y - indexTip.y,
@@ -1005,64 +1002,57 @@ function processGestures(lm) {
     const avgSpread = (dIndex + dMiddle + dRing + dPinky) / 4;
     const isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
 
-    // ========== 5. Pinch捏合：防抖+超平滑拉近到照片正面 ==========
+    // ========== 5. Pinch捏合：瞬间冻结所有+纯相机移动 ==========
     if (isPinching) {
         STATE.mode = 'FOCUS';
         const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
 
-        // 刚捏合：记录开始时间（确保能捏够1秒）
+        // 核心修复：刚Pinch的瞬间，立即冻结所有照片+粒子位置（不再移动）
         if (isJustPinched) {
-            window.pinchStartTime = currentTime;
-            console.log("Pinch开始，记录捏合时间");
-        }
-
-        // 核心：防抖切换照片（500ms内只切换一次）
-        if (isJustPinched && photos.length > 0) {
-            if (currentTime - window.lastPinchSwitchTime > window.focusConfig.pinchDebounceTime) {
+            // 1. 防抖切换照片
+            if (photos.length > 0 && currentTime - window.lastPinchSwitchTime > window.focusConfig.pinchDebounceTime) {
                 window.photoIndex = (window.photoIndex + 1) % photos.length;
                 STATE.focusTarget = photos[window.photoIndex].mesh;
-                window.lastPinchSwitchTime = currentTime; // 更新切换时间
+                window.lastPinchSwitchTime = currentTime;
                 console.log(`Pinch切换到：第 ${window.photoIndex} 张照片（防抖后）`);
 
-                // 计算照片正面目标位置
+                // 2. 计算照片正面目标位置
                 const photoPos = STATE.focusTarget.position.clone();
                 window.cameraTargetPos = photoPos.clone();
                 window.cameraTargetPos[window.focusConfig.offsetAxis] += 
                     window.focusConfig.photoFrontDistance * window.focusConfig.offsetDir;
-                
-                // 备份位置
-                window.lockedPositions.photos = photos.map(p => ({
-                    mesh: p.mesh,
-                    pos: p.mesh.position.clone(),
-                    rot: p.mesh.rotation.clone()
-                }));
-                window.lockedPositions.particles = particleSystem.map(p => ({
-                    mesh: p.mesh,
-                    pos: p.mesh?.position ? p.mesh.position.clone() : null,
-                    rot: p.mesh?.rotation ? p.mesh.rotation.clone() : null
-                }));
+            } else if (photos.length === 0) {
+                STATE.focusTarget = STATE.starMesh;
+                console.log("无照片，聚焦星星");
             }
-        } else if (isJustPinched && photos.length === 0) {
-            STATE.focusTarget = STATE.starMesh;
-            console.log("无照片，聚焦星星");
+
+            // 3. 立即备份+冻结所有照片+粒子位置（关键！Pinch瞬间就冻结）
+            window.lockedPositions.photos = photos.map(p => ({
+                mesh: p.mesh,
+                pos: p.mesh.position.clone(),
+                rot: p.mesh.rotation.clone()
+            }));
+            window.lockedPositions.particles = particleSystem.map(p => ({
+                mesh: p.mesh,
+                pos: p.mesh?.position ? p.mesh.position.clone() : null,
+                rot: p.mesh?.rotation ? p.mesh.rotation.clone() : null
+            }));
+            window.isSceneFrozen = true; // 标记全局冻结
+            console.log("❄️ Pinch瞬间冻结所有照片+粒子位置，全程静止");
         }
 
-        // 持续Pinch：超平滑拉近（不管捏合多久，都拉到正面）
+        // 持续Pinch：仅相机移动（照片/粒子已冻结，不会动）
         if (STATE.focusTarget && window.cameraTargetPos) {
             const currentDistance = camera.position.distanceTo(window.cameraTargetPos);
-            // 极慢速度移动，直到精准到照片正面
+            // 纯相机匀速移动，照片/粒子始终在原位
             if (currentDistance > window.focusConfig.lockThreshold) {
-                // 线性平滑移动（无加速，纯慢动）
                 const moveStep = camera.position.clone().sub(window.cameraTargetPos).multiplyScalar(-window.focusConfig.moveSpeed);
                 camera.position.add(moveStep);
-                console.log(`超平滑靠近照片正面，剩余距离：${currentDistance.toFixed(2)}`);
+                console.log(`纯相机移动靠近照片正面，剩余距离：${currentDistance.toFixed(2)}`);
             } else {
-                // 强制精准定位到照片正面
                 camera.position.copy(window.cameraTargetPos);
-                window.sceneLocked = true;
-                console.log(`✅ 精准锁定第${window.photoIndex}张照片正面，位置无偏移`);
+                console.log(`✅ 相机精准锁定第${window.photoIndex}张照片正面，周边粒子完整`);
             }
-            // 强制朝向照片中心（正面视角）
             camera.lookAt(STATE.focusTarget.position);
         }
 
@@ -1071,38 +1061,34 @@ function processGestures(lm) {
         STATE.spinVel.x *= 0.9;
         STATE.spinVel.y *= 0.9;
     } else {
-        // ========== 6. 松开Pinch：超平滑回归全视角 ==========
+        // ========== 6. 松开Pinch：解冻+回归全视角 ==========
         if (isJustReleased) {
-            window.sceneLocked = false;
-            console.log("🔓 解锁场景，开始超平滑回归全视角");
+            window.isSceneFrozen = false; // 立即解冻
+            console.log("🔥 松开Pinch，解冻所有照片+粒子位置，恢复动态");
         }
 
-        // 核心：线性超平滑回归（位置+旋转+视野同步慢动）
+        // 超平滑回归全视角
         if (window.cameraOriginalState) {
             const posDistance = camera.position.distanceTo(window.cameraOriginalState.pos);
             if (posDistance > 0.2) {
-                // 线性移动（无减速，纯慢动）
                 const backStep = camera.position.clone().sub(window.cameraOriginalState.pos).multiplyScalar(-window.focusConfig.backSpeed);
                 camera.position.add(backStep);
                 
-                // 旋转线性回归
                 camera.rotation.x += (window.cameraOriginalState.rot.x - camera.rotation.x) * window.focusConfig.backSpeed;
                 camera.rotation.y += (window.cameraOriginalState.rot.y - camera.rotation.y) * window.focusConfig.backSpeed;
                 camera.rotation.z += (window.cameraOriginalState.rot.z - camera.rotation.z) * window.focusConfig.backSpeed;
                 
-                // 视野线性回归
                 camera.fov += (window.cameraOriginalState.fov - camera.fov) * window.focusConfig.backSpeed;
                 camera.updateProjectionMatrix();
                 
                 console.log(`超平滑回归全视角，剩余距离：${posDistance.toFixed(2)}`);
             } else {
-                // 强制精准回归全视角
                 camera.position.copy(window.cameraOriginalState.pos);
                 camera.rotation.copy(window.cameraOriginalState.rot);
                 camera.fov = window.cameraOriginalState.fov;
                 camera.updateProjectionMatrix();
                 window.cameraTargetPos = null;
-                console.log("✅ 完全回归全视角，无偏移");
+                console.log("✅ 完全回归全视角");
             }
         }
 
@@ -1140,14 +1126,16 @@ function processGestures(lm) {
         STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
     }
 
-    // ========== 7. 锁定期间：精准固定照片+粒子位置 ==========
-    if (window.sceneLocked) {
+    // ========== 7. 冻结期间：强制固定所有位置（全程生效） ==========
+    if (window.isSceneFrozen) {
+        // 全程固定照片（Pinch瞬间就冻住，不会被拉出来）
         window.lockedPositions.photos.forEach(lock => {
             if (lock.mesh && lock.pos) {
                 lock.mesh.position.copy(lock.pos);
                 lock.mesh.rotation.copy(lock.rot);
             }
         });
+        // 全程固定粒子（照片周边粒子始终在原位）
         window.lockedPositions.particles.forEach(lock => {
             if (lock.mesh && lock.pos) {
                 lock.mesh.position.copy(lock.pos);
