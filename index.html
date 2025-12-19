@@ -1253,10 +1253,7 @@ function processGestures(lm) {
         STATE.spinVel.x = 0;
         STATE.spinVel.y = 0;
         STATE.hasPalmCenter = false;
-        camera.matrixAutoUpdate = false;
-    } else {
-        camera.matrixAutoUpdate = true;
-    }
+        
 
     // ========== 9. 保存状态 ==========
     window.lastPinch = isPinching;
