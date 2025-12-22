@@ -29,20 +29,24 @@
     }
 
     #title {
-        position: absolute;
-        top: 15px; /* 距离顶部的距离 */
-        left: 50%;
-        transform: translateX(-50%); /* 居中对齐 */
-        font-family: var(--font-main);
-        font-size: 30px;
-        color: var(--gold-primary); /* 金色 */
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary); /* 金光效果 */
-        letter-spacing: 2px;
-        font-weight: bold;
-        z-index: 1000; /* 让标题在最上层 */
-        text-align: center;
-        animation: fadeIn 2s ease-in-out;
-    }
+    position: absolute;
+    top: 15px; /* 距离顶部的距离 */
+    left: 50%;
+    transform: translateX(-50%); /* 居中对齐 */
+    font-family: var(--font-main);
+    font-size: 30px;
+    color: var(--gold-primary); /* 金色 */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary); /* 金光效果 */
+    letter-spacing: 2px;
+    font-weight: bold;
+    z-index: 1000; /* 让标题在最上层 */
+    text-align: center;
+    animation: fadeIn 2s ease-in-out;
+    /* 新增：初始隐藏 */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s ease-in-out;
+}
 
     .title-logo {
         width: 130px; /* 默认宽度 */
@@ -80,22 +84,31 @@
         background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
     }
 
-    #ui-layer2 {
-        position: absolute;
-        bottom: 20px; /* Move to the bottom */
-        left: 20px; /* Keep it at the left side */
-        z-index: 1000;
-        font-family: var(--font-main);
-        color: var(--gold-primary);
-        font-size: 16px;
-        line-height: 1.6;
-        pointer-events: none; /* Prevent interaction */
-    }
+    /* 操作说明初始隐藏，添加过渡动画 */
+#ui-layer2 {
+    position: absolute;
+    bottom: 20px; /* Move to the bottom */
+    left: 20px; /* Keep it at the left side */
+    z-index: 1000;
+    font-family: var(--font-main);
+    color: var(--gold-primary);
+    font-size: 16px;
+    line-height: 1.6;
+    pointer-events: none; /* Prevent interaction */
+    /* 新增：初始隐藏 */
+    opacity: 0;
+    transition: opacity 1s ease-in-out 0.5s; /* 延迟0.5秒显示，和标题错开 */
+}
+		/* 显示状态的样式 */
+#title.show, #ui-layer2.show {
+    opacity: 1;
+    pointer-events: auto;
+}
 
     /* 启动按钮基础样式（核心修复：补充缺失的基础样式） */
     #start-btn {
         position: fixed !important;
-        bottom: 50px !important; /* 底部居中 */
+        bottom: 60px !important; /* 底部居中 */
         left: 50% !important;
         transform: translateX(-50%) !important;
         z-index: 99999 !important; /* 确保不被遮挡 */
@@ -683,6 +696,10 @@ const waitForTreeComplete = () => {
                 startBtn.style.setProperty('pointer-events', 'auto', 'important');
                 startBtn.style.setProperty('z-index', '99999', 'important');
             }
+			// 新增：显示标题和操作说明
+            document.getElementById('title').classList.add('show');
+            document.getElementById('ui-layer2').classList.add('show');
+            
             console.log('✅ 圣诞树100%完整，启动按钮已显示！');
         }, 800); // 0.5秒延迟，确保用户视觉上看到完整的树
         return;
