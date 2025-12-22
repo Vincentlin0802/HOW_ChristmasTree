@@ -525,26 +525,25 @@ async function loadStoryPhotos() {
     // 替换init函数中原有的“延迟+渲染验证”代码
 // ========== 精准验证：粒子归位完成 + 渲染稳定后显示按钮 ==========
 const waitForTreeComplete = () => {
-    composer.render(); // 持续渲染，保证场景不卡
+    composer.render(); 
 
-    // 两个条件都满足才显示按钮：
-    // 1. 粒子归位完成  2. 粒子创建后至少过了1秒（避免过早）
+    // 基础条件：粒子归位完成 + 粒子创建后至少1秒
     const isReady = ANIMATION_STATE.treeSettleComplete && (clock.getElapsedTime() * 1000 - ANIMATION_STATE.settleCheckTime > 1000);
     
     if (isReady) {
-        const startBtn = document.getElementById('start-btn');
-        if (startBtn) {
-            // 正确设置带!important的样式
-            startBtn.style.setProperty('display', 'block', 'important');
-            startBtn.style.setProperty('pointer-events', 'auto', 'important');
-            startBtn.style.setProperty('z-index', '99999', 'important');
-        }
-        console.log('✅ 圣诞树100%完整，启动按钮已显示！');
+        // 核心修改：额外等待0.5秒，让视觉完全稳定
+        setTimeout(() => {
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.style.setProperty('display', 'block', 'important');
+                startBtn.style.setProperty('pointer-events', 'auto', 'important');
+                startBtn.style.setProperty('z-index', '99999', 'important');
+            }
+            console.log('✅ 圣诞树100%完整，启动按钮已显示！');
         }, 500); // 0.5秒延迟，确保用户视觉上看到完整的树
         return;
     }
 
-    // 未就绪则继续等待
     requestAnimationFrame(waitForTreeComplete);
 };
 
