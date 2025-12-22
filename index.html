@@ -276,35 +276,42 @@
         // ==========================================
         // 1. CONFIG: 全局配置参数 (方便调整)
         // ==========================================
-        const CONFIG = {
-            colors: {
-                bg: 0x020202, 
-                gold: 0xffd700, 
-                red: 0x880000, 
-                green: 0x004400,
-                pink: 0xff69b4
-            },
-            particles: {
-                count: 1800,      // 核心粒子数
-                dustCount: 1500,  // 氛围星尘数
-                treeHeight: 28,   // 树高
-                treeRadius: 9     // 树底半径
-            },
-            camera: {
-                z: 55 // 初始摄像机距离
-            },
-            gestures: {
-                pinchThreshold: 0.05, // 捏合判定阈值
-                palmOpenThreshold: 0.35, // 手掌张开判定阈值
-                sensitivity: 6.0 // 手势旋转灵敏度
-            },
-			const ANIMATION_STATE = {
+        // ==========================================
+// 1. CONFIG: 全局配置参数 (方便调整)
+// ==========================================
+const CONFIG = {
+    colors: {
+        bg: 0x020202, 
+        gold: 0xffd700, 
+        red: 0x880000, 
+        green: 0x004400,
+        pink: 0xff69b4
+    },
+    particles: {
+        count: 1800,      // 核心粒子数
+        dustCount: 1500,  // 氛围星尘数
+        treeHeight: 28,   // 树高
+        treeRadius: 9     // 树底半径
+    },
+    camera: {
+        z: 55 // 初始摄像机距离
+    },
+    gestures: {
+        pinchThreshold: 0.05, // 捏合判定阈值
+        palmOpenThreshold: 0.35, // 手掌张开判定阈值
+        sensitivity: 6.0 // 手势旋转灵敏度
+    }
+};
+
+// ==========================================
+// 新增：粒子归位状态管理（独立全局变量，不在CONFIG内部）
+// ==========================================
+const ANIMATION_STATE = {
     treeSettleComplete: false, // 圣诞树粒子是否归位完成
     settleCheckTime: 0,        // 开始检查归位的时间
     settleThreshold: 0.01,     // 归位判定阈值（位置误差<0.01则完成）
     settleDelay: 2000          // 等待归位的最大时间（2秒）
-}
-        };
+};
 	// ==========================================
 // 新增：配置读取 + 本地图片加载函数
 // ==========================================
