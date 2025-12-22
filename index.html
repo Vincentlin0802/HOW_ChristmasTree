@@ -297,7 +297,13 @@
                 pinchThreshold: 0.05, // 捏合判定阈值
                 palmOpenThreshold: 0.35, // 手掌张开判定阈值
                 sensitivity: 6.0 // 手势旋转灵敏度
-            }
+            },
+			const ANIMATION_STATE = {
+    treeSettleComplete: false, // 圣诞树粒子是否归位完成
+    settleCheckTime: 0,        // 开始检查归位的时间
+    settleThreshold: 0.01,     // 归位判定阈值（位置误差<0.01则完成）
+    settleDelay: 2000          // 等待归位的最大时间（2秒）
+}
         };
 	// ==========================================
 // 新增：配置读取 + 本地图片加载函数
@@ -509,39 +515,34 @@ async function loadStoryPhotos() {
         });
     }
 
-    // ========== 精准验证：粒子创建完成后，渲染3帧再显示按钮 ==========
-    // 粒子创建完成后执行的渲染校验
-let renderCount = 0;
-    // 可选：在渲染验证前加一个固定延迟（比如800ms），给场景最终渲染缓冲
-    setTimeout(() => {
-        const checkRenderComplete = () => {
-            composer.render(); // 强制渲染一帧
-            renderCount++;
-            
-            // ========== 渲染帧数从3帧 → 8帧 ==========
-            // 帧数越多，越能确保粒子完全渲染（8帧仅需约80ms，无感知延迟）
-            if (renderCount >= 8) {
-                const startBtn = document.getElementById('start-btn');
-                if (!startBtn) {
-                    alert('启动按钮未找到！检查id是否为start-btn');
-                    return;
-                }
+    // 替换init函数中原有的“延迟+渲染验证”代码
+// ========== 精准验证：粒子归位完成 + 渲染稳定后显示按钮 ==========
+const waitForTreeComplete = () => {
+    composer.render(); // 持续渲染，保证场景不卡
 
-                // 正确设置样式显示按钮
-                startBtn.style.setProperty('display', 'block', 'important');
-                startBtn.style.setProperty('pointer-events', 'auto', 'important');
-                startBtn.style.setProperty('z-index', '99999', 'important');
+    // 两个条件都满足才显示按钮：
+    // 1. 粒子归位完成  2. 粒子创建后至少过了1秒（避免过早）
+    const isReady = ANIMATION_STATE.treeSettleComplete && (clock.getElapsedTime() * 1000 - ANIMATION_STATE.settleCheckTime > 1000);
+    
+    if (isReady) {
+        const startBtn = document.getElementById('start-btn');
+        if (startBtn) {
+            // 正确设置带!important的样式
+            startBtn.style.setProperty('display', 'block', 'important');
+            startBtn.style.setProperty('pointer-events', 'auto', 'important');
+            startBtn.style.setProperty('z-index', '99999', 'important');
+        }
+        console.log('✅ 圣诞树完全就绪（粒子归位+渲染稳定），启动按钮已显示！');
+        return;
+    }
 
-                cancelAnimationFrame(checkRenderId);
-                console.log('✅ 圣诞树完全渲染完成（延长等待），启动按钮已显示！');
-                return;
-            }
-            checkRenderId = requestAnimationFrame(checkRenderComplete);
-        };
-        let checkRenderId = requestAnimationFrame(checkRenderComplete);
-    }, 5000); // 可选：额外加800ms固定延迟，确保场景完全稳定
+    // 未就绪则继续等待
+    requestAnimationFrame(waitForTreeComplete);
+};
 
-    animate();
+// 粒子创建完成后，启动等待检查
+waitForTreeComplete();
+			animate();
 }
         // ==========================================
         // 4. Three.js 核心设置
@@ -849,7 +850,7 @@ let renderCount = 0;
         setTimeout(() => {
             console.log(`圣诞树粒子创建完成：主体装饰${CONFIG.particles.count}个 + 星尘${CONFIG.particles.dustCount}个 + 树顶星星`);
             resolve(true); // 告诉init()：粒子全部创建好了
-        }, 4000);
+        }, 1000);
     });
 }
         function createStarTopper() {
@@ -1191,59 +1192,82 @@ function processGestures(lm) {
         // ==========================================
        // 8. 动画循环 & DOM 事件
         function animate() {
-            requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
 
-            const dt = clock.getDelta();
-            STATE.time = clock.elapsedTime;
+    const dt = clock.getDelta();
+    STATE.time = clock.elapsedTime;
+    const currentTimeMs = STATE.time * 1000; // 当前时间（毫秒）
 
-            // 计算输入源
-            let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
-            // 核心：未启动时，只渲染静态画面，不执行任何动画
+    // 核心：未启动场景 或 摄像头未初始化 → 禁用手势动画，但继续渲染
     if (!window.isSceneStarted) {
+        // 检查粒子是否归位完成（仅在未启动场景时判断）
+        if (!ANIMATION_STATE.treeSettleComplete) {
+            checkTreeSettle(currentTimeMs); // 新增：检查归位
+        }
         composer.render();
         return;
     }
-            // --- 全局旋转控制 ---
-            if (STATE.mode === 'TREE') {
-                // 自动慢自转
-                STATE.rotation.y -= 0.4 * dt; 
-                // 自动扶正 (解决朝向问题)
-                STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
-                // 随输入轻微摆动
-                mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
-            } 
-            else if (STATE.mode === 'SCATTER') {
-                STATE.rotation.y += STATE.spinVel.y * dt;
-                STATE.rotation.x += STATE.spinVel.x * dt;
-                // 阻尼效果
-                if (!STATE.hand.detected) {
-                    STATE.spinVel.x *= 0.95;
-                    STATE.spinVel.y *= 0.95;
-                }
-            }
-            // --- 已删除 HEART 模式的 else if 分支 ---
 
-            // 应用旋转
-            mainGroup.rotation.y = STATE.rotation.y;
-            mainGroup.rotation.x = STATE.rotation.x;
-            bgGroup.rotation.y -= 0.05 * dt;
-
-            // 树顶星星动画
-            if (STATE.starMesh) {
-                STATE.starMesh.rotation.y -= dt;
-                STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
-                const scale = 1.0 + Math.sin(STATE.time * 2) * 0.1;
-                STATE.starMesh.scale.set(scale, scale, scale);
-            }
-
-            // 更新所有粒子
-            for(let i=0, l=particleSystem.length; i<l; i++){
-                particleSystem[i].update(dt, STATE.time, STATE.mode, STATE.focusTarget);
-            }
-
-            composer.render();
+    // 手势相关动画逻辑（原有代码不变）
+    let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
+    if (STATE.mode === 'TREE') {
+        STATE.rotation.y -= 0.4 * dt; 
+        STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
+        mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
+    } 
+    else if (STATE.mode === 'SCATTER') {
+        STATE.rotation.y += STATE.spinVel.y * dt;
+        STATE.rotation.x += STATE.spinVel.x * dt;
+        if (!STATE.hand.detected) {
+            STATE.spinVel.x *= 0.95;
+            STATE.spinVel.y *= 0.95;
         }
+    }
 
+    mainGroup.rotation.y = STATE.rotation.y;
+    mainGroup.rotation.x = STATE.rotation.x;
+    bgGroup.rotation.y -= 0.05 * dt;
+
+    if (STATE.starMesh) {
+        STATE.starMesh.rotation.y -= dt;
+        STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
+        const scale = 1.0 + Math.sin(STATE.time * 2) * 0.1;
+        STATE.starMesh.scale.set(scale, scale, scale);
+    }
+
+    for(let i=0, l=particleSystem.length; i<l; i++){
+        particleSystem[i].update(dt, STATE.time, STATE.mode, STATE.focusTarget);
+    }
+
+    composer.render();
+}
+
+// 新增：检查圣诞树粒子是否归位完成
+function checkTreeSettle(currentTimeMs) {
+    // 超过最大等待时间（2秒），强制判定完成
+    if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
+        ANIMATION_STATE.treeSettleComplete = true;
+        console.log('✅ 粒子归位超时，强制判定完成');
+        return;
+    }
+
+    // 抽样检查前100个粒子的位置误差（避免遍历全部3300个，提升性能）
+    const sampleCount = Math.min(100, particleSystem.length);
+    let totalError = 0;
+    for (let i = 0; i < sampleCount; i++) {
+        const p = particleSystem[i];
+        if (p.type === 'DUST') continue; // 星尘不检查
+        const error = p.mesh.position.distanceTo(p.posTree);
+        totalError += error;
+    }
+    const avgError = totalError / sampleCount;
+
+    // 平均误差<阈值，判定归位完成
+    if (avgError < ANIMATION_STATE.settleThreshold) {
+        ANIMATION_STATE.treeSettleComplete = true;
+        console.log(`✅ 粒子归位完成，平均误差：${avgError.toFixed(4)}`);
+    }
+}
         function setupEvents() {
             // 窗口调整
             window.addEventListener('resize', () => {
