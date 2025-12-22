@@ -1443,7 +1443,7 @@ function checkTreeSettle(currentTimeMs) {
 }
 
 		// 平滑归位动画：粒子在指定时间内 lerp 到目标位置
-function startSmoothSettleAnimation(duration = 1) {
+function startSmoothSettleAnimation(duration = 3) {
     // 记录动画开始时间
     const startTime = Date.now();
     const animationDuration = duration * 1000; // 转毫秒
