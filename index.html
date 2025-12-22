@@ -676,29 +676,18 @@
             }
 
             // 替换init函数中原有的“延迟+渲染验证”代码
-            // ========== 精准验证：粒子归位完成 + 渲染稳定后显示按钮 ==========
-            const waitForTreeComplete = () => {
-                composer.render(); 
+            // 精准验证：粒子归位完成 + 渲染稳定后显示按钮
+const waitForTreeComplete = () => {
+    composer.render(); 
 
-                // 基础条件：粒子归位完成 + 粒子创建后至少1秒
-                const isReady = ANIMATION_STATE.treeSettleComplete && (clock.getElapsedTime() * 1000 - ANIMATION_STATE.settleCheckTime > 1000);
-                
-                if (isReady) {
-                    // 核心修改：同步显示标题、操作说明、启动按钮
-                    const startBtn = document.getElementById('start-btn');
-                    const title = document.getElementById('title');
-                    const uiLayer2 = document.getElementById('ui-layer2');
-                    
-                    startBtn.classList.add('show-ui');
-                    title.classList.add('show-ui');
-                    uiLayer2.classList.add('show-ui');
-                    
-                    console.log('✅ 圣诞树100%完整，UI元素已显示！');
-                    return;
-                }
+    // 简化判定：只要时间超过1秒，就触发检查（不再依赖归位完成）
+    if (clock.getElapsedTime() > 1) {
+        checkTreeSettle(clock.getElapsedTime() * 1000);
+    }
 
-                requestAnimationFrame(waitForTreeComplete);
-            };
+    // 即使归位完成，也继续渲染（避免动画停止）
+    requestAnimationFrame(waitForTreeComplete);
+};
 
             // 粒子创建完成后，启动等待检查
             waitForTreeComplete();
@@ -1277,28 +1266,42 @@
 
             // ========== 4. 核心状态机逻辑 ==========
             if (isPinching) {
-                // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
-                STATE.mode = 'FOCUS';
-                // 过滤有效照片（确保mesh存在）
-                const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
-                console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
-                console.log("当前全局索引：", window.photoIndex);
+    // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
+    STATE.mode = 'FOCUS';
+    // 过滤有效照片（确保mesh存在）
+    const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
+    console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
+    console.log("当前全局索引：", window.photoIndex);
 
-                // 只在「刚捏合」的瞬间切换目标（防抖动）
-                if (isJustPinched && photos.length > 0) {
-                    // 循环更新索引
-                    window.photoIndex = (window.photoIndex + 1) % photos.length;
-                    STATE.focusTarget = photos[window.photoIndex].mesh;
-                    console.log("Pinch切换到：第", window.photoIndex, "张照片");
-                } else if (photos.length === 0) {
-                    STATE.focusTarget = STATE.starMesh;
-                    console.log("无照片，聚焦星星");
-                }
+    // 只在「刚捏合」的瞬间切换目标（防抖动）
+    if (isJustPinched && photos.length > 0) {
+        // ========== 核心修改：顺序 → 随机 ==========
+        // 方案1：纯随机（可能重复选到同一张）
+        const randomIndex = Math.floor(Math.random() * photos.length);
+        window.photoIndex = randomIndex; // 更新全局索引为随机值
+        
+        // 方案2：随机且不重复（可选，避免连续选同一张）
+        // if (photos.length > 1) {
+        //     let randomIndex;
+        //     // 循环直到选到和当前不同的索引
+        //     do {
+        //         randomIndex = Math.floor(Math.random() * photos.length);
+        //     } while (randomIndex === window.photoIndex);
+        //     window.photoIndex = randomIndex;
+        // }
+        
+        STATE.focusTarget = photos[window.photoIndex].mesh;
+        console.log("Pinch随机切换到：第", window.photoIndex, "张照片");
+    } else if (photos.length === 0) {
+        STATE.focusTarget = STATE.starMesh;
+        console.log("无照片，聚焦星星");
+    }
 
-                // 聚焦时停止手势旋转
-                STATE.hasPalmCenter = false;
-                STATE.spinVel.x *= 0.9;
-                STATE.spinVel.y *= 0.9;
+    // 聚焦时停止手势旋转
+    STATE.hasPalmCenter = false;
+    STATE.spinVel.x *= 0.9;
+    STATE.spinVel.y *= 0.9;
+}
             } else {
                 // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
                 STATE.wasPointing = false; // 兼容原有指点手势的状态重置
@@ -1397,46 +1400,73 @@
         }
 
         // 新增：检查圣诞树粒子是否归位完成
-        function checkTreeSettle(currentTimeMs) {
-            // 初始化检查时间
-            if (ANIMATION_STATE.settleCheckTime === 0) {
-                ANIMATION_STATE.settleCheckTime = currentTimeMs;
-            }
+        // 新增：检查圣诞树粒子是否归位完成（放宽判定+强制兜底）
+function checkTreeSettle(currentTimeMs) {
+    // 初始化检查时间
+    if (ANIMATION_STATE.settleCheckTime === 0) {
+        ANIMATION_STATE.settleCheckTime = currentTimeMs;
+    }
 
-            // 1. 超时兜底（延长到4秒，给粒子足够的动画时间）
-            if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
-                console.log('✅ 粒子归位超时，开始平滑归位动画');
-                // 启动平滑归位动画（而非瞬间瞬移）
-                startSmoothSettleAnimation();
-                ANIMATION_STATE.treeSettleComplete = true;
-                return;
-            }
+    // 1. 强制兜底：无论粒子是否归位，5秒后必显示UI（核心修复）
+    if (currentTimeMs - ANIMATION_STATE.settleCheckTime > 5000) { // 5秒兜底
+        console.log('✅ 超时强制显示UI');
+        // 直接显示所有UI元素（不再等粒子归位）
+        showAllUI();
+        ANIMATION_STATE.treeSettleComplete = true;
+        return;
+    }
 
-            // 2. 全量检查（判断是否需要归位）
-            let allInPlace = true;
-            let maxError = 0;
-            for (let i = 0; i < particleSystem.length; i++) {
-                const p = particleSystem[i];
-                if (p.type === 'DUST') continue;
-                
-                const error = p.mesh.position.distanceTo(p.posTree);
-                maxError = Math.max(maxError, error);
-                if (error > 0.05) {
-                    allInPlace = false;
-                    break;
-                }
-            }
-
-            // 3. 所有粒子接近归位 → 启动最终平滑对齐（避免微小晃动）
-            if (allInPlace) {
-                startSmoothSettleAnimation(0.2); // 快速平滑（0.2秒）
-                ANIMATION_STATE.treeSettleComplete = true;
-                console.log(`✅ 粒子接近归位，最大误差：${maxError.toFixed(4)}，开始最终平滑对齐`);
-            }
+    // 2. 放宽归位判定（误差从0.05→0.5，更容易满足）
+    let allInPlace = true;
+    let maxError = 0;
+    for (let i = 0; i < particleSystem.length; i++) {
+        const p = particleSystem[i];
+        if (p.type === 'DUST') continue; // 星尘粒子不检查
+        
+        const error = p.mesh.position.distanceTo(p.posTree);
+        maxError = Math.max(maxError, error);
+        if (error > 0.5) { // 放宽到0.5（原0.05）
+            allInPlace = false;
+            break;
         }
+    }
 
+    // 3. 满足条件则显示UI
+    if (allInPlace) {
+        showAllUI();
+        ANIMATION_STATE.treeSettleComplete = true;
+        console.log(`✅ 粒子归位完成，最大误差：${maxError.toFixed(4)}`);
+    }
+}
+
+// 新增：独立的UI显示函数（统一控制）
+function showAllUI() {
+    const startBtn = document.getElementById('start-btn');
+    const title = document.getElementById('title');
+    const uiLayer2 = document.getElementById('ui-layer2');
+    
+    // 强制添加显示类（覆盖!important）
+    startBtn.classList.add('show-ui');
+    title.classList.add('show-ui');
+    uiLayer2.classList.add('show-ui');
+    
+    // 额外兜底：直接设置样式（防止类名失效）
+    startBtn.style.display = 'inline-block';
+    startBtn.style.opacity = '1';
+    startBtn.style.pointerEvents = 'auto';
+    
+    title.style.display = 'block';
+    title.style.opacity = '1';
+    title.style.pointerEvents = 'auto';
+    
+    uiLayer2.style.display = 'block';
+    uiLayer2.style.opacity = '1';
+    uiLayer2.style.pointerEvents = 'auto';
+    
+    console.log('✅ 所有UI元素已强制显示');
+}
         // 平滑归位动画：粒子在指定时间内 lerp 到目标位置
-        function startSmoothSettleAnimation(duration = 1) {
+        function startSmoothSettleAnimation(duration = 3) {
             // 记录动画开始时间
             const startTime = Date.now();
             const animationDuration = duration * 1000; // 转毫秒
