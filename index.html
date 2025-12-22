@@ -105,42 +105,51 @@
     pointer-events: auto;
 }
 
-    /* 启动按钮基础样式（核心修复：补充缺失的基础样式） */
-    #start-btn {
-        position: fixed !important;
-        bottom: 80px !important; /* 底部居中 */
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 99999 !important; /* 确保不被遮挡 */
-        padding: 22px 45px !important;
-        background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
-        color: var(--gold-dark) !important; /* 深金色文字，对比更和谐 */
-        border: 2px solid var(--gold-secondary) !important;
-        border-radius: 16px !important;
-        font-size: 20px !important;
-        font-weight: 600 !important;
-        font-family: var(--font-main) !important; /* 匹配全局字体 */
-        cursor: pointer !important;
-        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
-        display: none !important; /* 初始隐藏 */
-        pointer-events: none !important;
-        opacity: 1 !important;
-        transition: all 0.3s ease !important;
-    }
+    
+    /* 启动按钮基础样式（核心修复：hover 失效问题） */
+#start-btn {
+    position: fixed !important;
+    bottom: 80px !important; /* 底部居中 */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 99999 !important; /* 确保不被遮挡 */
+    padding: 22px 45px !important;
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
+    color: var(--gold-dark) !important; /* 深金色文字，对比更和谐 */
+    border: 2px solid var(--gold-secondary) !important;
+    border-radius: 16px !important;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    font-family: var(--font-main) !important; /* 匹配全局字体 */
+    cursor: pointer !important;
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
+    /* 核心修复1：初始隐藏用 opacity 而非 display，保留渲染空间 */
+    opacity: 0 !important;
+    visibility: hidden !important;
+    /* 核心修复2：初始允许指针事件（hover 前提），隐藏时不响应 */
+    pointer-events: none !important;
+    transition: all 0.3s ease !important;
+}
 
-    /* 启动按钮 hover 效果 */
-    #start-btn:hover {
-        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
-        box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
-        transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
-    }
+/* 按钮显示状态（通过 JS 添加 show 类） */
+#start-btn.show {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important; /* 恢复指针事件，允许 hover/click */
+}
 
-    /* 启动按钮 active 效果（合并重复样式） */
-    #start-btn:active {
-        transform: translateX(-50%) translateY(1px) scale(0.95) !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-    }
+/* 启动按钮 hover 效果（提升优先级，确保生效） */
+#start-btn.show:hover {
+    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
+    transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
+}
 
+/* 启动按钮 active 效果（合并重复样式） */
+#start-btn.show:active {
+    transform: translateX(-50%) translateY(1px) scale(0.95) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+}
     /* 启动按钮移动端适配 */
     @media (max-width: 768px) {
         #start-btn {
@@ -692,9 +701,7 @@ const waitForTreeComplete = () => {
         setTimeout(() => {
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
-                startBtn.style.setProperty('display', 'block', 'important');
-                startBtn.style.setProperty('pointer-events', 'auto', 'important');
-                startBtn.style.setProperty('z-index', '99999', 'important');
+               startBtn.classList.add('show');
             }
 			// 新增：显示标题和操作说明
             document.getElementById('title').classList.add('show');
