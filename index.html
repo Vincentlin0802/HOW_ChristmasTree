@@ -238,7 +238,7 @@
   top: 50%; 
   left: 50%; 
   transform: translate(-50%, -50%); 
-  z-index: 99999; /* 最高层级，确保不被遮挡 */
+  z-index: 99999; 
   padding: 20px 40px; 
   background: #ff6b6b; 
   color: white; 
@@ -247,7 +247,8 @@
   font-size: 18px; 
   cursor: pointer; 
   box-shadow: 0 4px 16px rgba(0,0,0,0.3); 
-  display: block; /* 默认显示 */
+  display: none !important; /* 强制初始隐藏，加!important避免被覆盖 */
+  pointer-events: none; /* 初始不可点击 */
 ">
   点击开始体验
 </button>
@@ -428,22 +429,23 @@ async function loadStoryPhotos() {
         // 3. 初始化入口
         // ==========================================
         async function init() {
-    // 1. 初始化基础场景（不包含摄像头）
     initThree();          // 初始化 Three.js 场景
     setupEnvironment();   // 设置环境贴图
     setupLights();        // 设置灯光
     createTextures();     // 生成程序化纹理
     createGalaxyBackground(); // 创建背景星空
-    createParticles();    // 创建核心粒子系统（圣诞树）
     setupPostProcessing();// 设置辉光后期处理
-    setupEvents();        // 绑定 DOM 事件（仅基础DOM，不含手势）
+    setupEvents();        // 绑定 DOM 事件
     
-    // 2. 加载所有图片资源
+    // 加载所有图片资源
     await loadTitleLogo();   // 加载标题Logo
     await loadTipPhotos();   // 加载皮头照片
     await loadStoryPhotos(); // 加载故事照片
 
-    // 3. 移除 Loading 遮罩
+    // ========== 核心修改：等待圣诞树粒子完全创建 ==========
+    await createParticles(); // 替换原来的同步调用，等粒子创建完
+
+    // 移除 Loading 遮罩
     const loader = document.getElementById('loader');
     loader.style.opacity = 0;
     setTimeout(() => loader.remove(), 1200);
@@ -454,9 +456,6 @@ async function loadStoryPhotos() {
     const startBtn = document.getElementById('start-btn');
     const bgMusic = document.getElementById('bg-music');
     const musicBtn = document.getElementById('music-play-btn');
-
-    // 初始隐藏启动按钮（等圣诞树渲染完成后显示）
-    startBtn.style.display = 'none';
 
     // ========== 音乐播放函数 ==========
     const playMusic = () => {
@@ -474,11 +473,11 @@ async function loadStoryPhotos() {
             });
     };
 
-    // ========== 摄像头初始化函数（延后到点击按钮后） ==========
+    // ========== 摄像头初始化函数（点击后执行） ==========
     const initCameraAndGesture = async () => {
         if (window.mediaPipeInited) return; // 避免重复初始化
         try {
-            await initMediaPipe(); // 初始化MediaPipe（请求摄像头权限）
+            await initMediaPipe(); // 请求摄像头权限
             window.mediaPipeInited = true;
             console.log('摄像头初始化成功，手势控制已开启');
         } catch (e) {
@@ -487,18 +486,15 @@ async function loadStoryPhotos() {
         }
     };
 
-    // ========== 启动按钮点击逻辑（核心：触发摄像头+解锁所有功能） ==========
+    // ========== 启动按钮点击逻辑 ==========
     startBtn.addEventListener('click', async () => {
-        // 1. 标记场景启动
-        window.isSceneStarted = true;
-        // 2. 隐藏启动按钮
-        startBtn.style.display = 'none';
-        // 3. 初始化摄像头（请求权限）
-        await initCameraAndGesture();
-        // 4. 播放音乐
-        playMusic();
-        // 5. 提示启动成功
-        console.log('场景已启动，摄像头权限已请求，手势控制可用');
+        startBtn.textContent = '请求摄像头权限中...';
+        startBtn.disabled = true; // 禁用按钮，避免重复点击
+        
+        await initCameraAndGesture(); // 先请求摄像头权限
+        window.isSceneStarted = true; // 解锁动画/手势
+        startBtn.style.display = 'none'; // 隐藏按钮
+        playMusic(); // 播放音乐
     });
 
     // ========== 音乐兜底按钮 ==========
@@ -512,24 +508,25 @@ async function loadStoryPhotos() {
         });
     }
 
-    // ========== 等待圣诞树渲染完成后显示启动按钮 ==========
+    // ========== 精准验证：粒子创建完成后，渲染3帧再显示按钮 ==========
     let renderCount = 0;
     const checkRenderComplete = () => {
-        // 手动渲染一帧，确保圣诞树绘制完成
-        composer.render();
+        composer.render(); // 强制渲染一帧（确保粒子画到画布）
         renderCount++;
         
-        // 渲染3帧后（确保圣诞树完全显示），显示启动按钮
+        // 渲染3帧后（确保粒子完全显示），显示启动按钮
         if (renderCount >= 3) {
-            startBtn.style.display = 'block'; // 显示按钮
+            startBtn.style.display = 'block !important';
+            startBtn.style.pointerEvents = 'auto'; // 恢复可点击
             cancelAnimationFrame(checkRenderId);
+            console.log('圣诞树完全渲染完成，显示启动按钮');
             return;
         }
         checkRenderId = requestAnimationFrame(checkRenderComplete);
     };
     let checkRenderId = requestAnimationFrame(checkRenderComplete);
 
-    // 启动渲染循环（但被 isSceneStarted 拦截，只渲染静态圣诞树）
+    // 启动渲染循环（静态圣诞树）
     animate();
 }
         // ==========================================
@@ -788,51 +785,59 @@ async function loadStoryPhotos() {
 
         // 创建主粒子系统
         function createParticles() {
-            const sphereGeo = new THREE.SphereGeometry(0.5, 32, 32); 
-            const boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45); 
-            // 糖果形状
-            const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.5, 0), new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0.1, 0.5, 0), new THREE.Vector3(0.3, 0.4, 0)]);
-            const candyGeo = new THREE.TubeGeometry(curve, 16, 0.08, 8, false);
+    // 返回Promise，让init()能等待粒子全部创建完成
+    return new Promise((resolve) => {
+        const sphereGeo = new THREE.SphereGeometry(0.5, 32, 32); 
+        const boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45); 
+        // 糖果形状
+        const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.5, 0), new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0.1, 0.5, 0), new THREE.Vector3(0.3, 0.4, 0)]);
+        const candyGeo = new THREE.TubeGeometry(curve, 16, 0.08, 8, false);
 
-            // 材质库
-            const goldMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.15, envMapIntensity: 2.5, emissive: 0x664400, emissiveIntensity: 0.2 });
-            const greenMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.green, metalness: 0.4, roughness: 0.3, emissive: 0x001100, emissiveIntensity: 0.1 });
-            const redMat = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.red, metalness: 0.6, roughness: 0.2, clearcoat: 1.0, emissive: 0x330000, emissiveIntensity: 0.4 });
-            const candyMat = new THREE.MeshStandardMaterial({ map: caneTexture, roughness: 0.3, metalness: 0.1, emissive: 0x222222 });
+        // 材质库
+        const goldMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.15, envMapIntensity: 2.5, emissive: 0x664400, emissiveIntensity: 0.2 });
+        const greenMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.green, metalness: 0.4, roughness: 0.3, emissive: 0x001100, emissiveIntensity: 0.1 });
+        const redMat = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.red, metalness: 0.6, roughness: 0.2, clearcoat: 1.0, emissive: 0x330000, emissiveIntensity: 0.4 });
+        const candyMat = new THREE.MeshStandardMaterial({ map: caneTexture, roughness: 0.3, metalness: 0.1, emissive: 0x222222 });
+        
+        const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
+        const dustMat = new THREE.MeshBasicMaterial({ color: 0xffffee, blending: THREE.AdditiveBlending });
+
+        // 1. 生成主体装饰
+        for (let i = 0; i < CONFIG.particles.count; i++) {
+            const rand = Math.random(); 
+            let mesh, type;
+            if (rand < 0.35) { mesh = new THREE.Mesh(boxGeo, greenMat); type = 'BOX'; } 
+            else if (rand < 0.70) { mesh = new THREE.Mesh(boxGeo, goldMat); type = 'GOLD_BOX'; } 
+            else if (rand < 0.90) { mesh = new THREE.Mesh(sphereGeo, goldMat); type = 'GOLD_SPHERE'; } 
+            else if (rand < 0.96) { mesh = new THREE.Mesh(sphereGeo, redMat); type = 'RED'; } 
+            else { mesh = new THREE.Mesh(candyGeo, candyMat); type = 'CANE'; }
             
-            const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
-            const dustMat = new THREE.MeshBasicMaterial({ color: 0xffffee, blending: THREE.AdditiveBlending });
-
-            // 1. 生成主体装饰
-            for (let i = 0; i < CONFIG.particles.count; i++) {
-                const rand = Math.random(); 
-                let mesh, type;
-                if (rand < 0.35) { mesh = new THREE.Mesh(boxGeo, greenMat); type = 'BOX'; } 
-                else if (rand < 0.70) { mesh = new THREE.Mesh(boxGeo, goldMat); type = 'GOLD_BOX'; } 
-                else if (rand < 0.90) { mesh = new THREE.Mesh(sphereGeo, goldMat); type = 'GOLD_SPHERE'; } 
-                else if (rand < 0.96) { mesh = new THREE.Mesh(sphereGeo, redMat); type = 'RED'; } 
-                else { mesh = new THREE.Mesh(candyGeo, candyMat); type = 'CANE'; }
-                
-                const s = 0.4 + Math.random() * 0.4;
-                mesh.scale.set(s,s,s);
-                mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
-                mainGroup.add(mesh);
-                particleSystem.push(new Particle(mesh, type, false));
-            }
-
-            // 2. 生成星尘
-            for(let i=0; i<CONFIG.particles.dustCount; i++) {
-                const mesh = new THREE.Mesh(dustGeo, dustMat);
-                mesh.scale.setScalar(0.5 + Math.random());
-                mainGroup.add(mesh);
-                particleSystem.push(new Particle(mesh, 'DUST', true));
-            }
-
-            
-            // 3. 树顶星星
-            createStarTopper();
+            const s = 0.4 + Math.random() * 0.4;
+            mesh.scale.set(s,s,s);
+            mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+            mainGroup.add(mesh);
+            particleSystem.push(new Particle(mesh, type, false));
         }
 
+        // 2. 生成星尘
+        for(let i=0; i<CONFIG.particles.dustCount; i++) {
+            const mesh = new THREE.Mesh(dustGeo, dustMat);
+            mesh.scale.setScalar(0.5 + Math.random());
+            mainGroup.add(mesh);
+            particleSystem.push(new Particle(mesh, 'DUST', true));
+        }
+
+        // 3. 树顶星星（确保星星也创建完成）
+        createStarTopper();
+
+        // ========== 关键：等待粒子数据上传GPU后，标记创建完成 ==========
+        // 200ms延迟：给Three.js时间把粒子几何体/材质上传到GPU（渲染前的关键步骤）
+        setTimeout(() => {
+            console.log(`圣诞树粒子创建完成：主体装饰${CONFIG.particles.count}个 + 星尘${CONFIG.particles.dustCount}个 + 树顶星星`);
+            resolve(true); // 告诉init()：粒子全部创建好了
+        }, 200);
+    });
+}
         function createStarTopper() {
             const starGeo = new THREE.OctahedronGeometry(1.5, 0);
             const starMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xffaa00, emissiveIntensity: 2.0, metalness: 1.0, roughness: 0 });
