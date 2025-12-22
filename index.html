@@ -234,21 +234,22 @@
     </div>
     <!-- 启动按钮：居中显示，样式醒目 -->
 <button id="start-btn" style="
-  position: fixed; 
-  top: 50%; 
-  left: 50%; 
-  transform: translate(-50%, -50%); 
-  z-index: 99999; 
-  padding: 20px 40px; 
-  background: #ff6b6b; 
-  color: white; 
-  border: none; 
-  border-radius: 12px; 
-  font-size: 18px; 
-  cursor: pointer; 
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3); 
-  display: none !important; /* 强制初始隐藏，加!important避免被覆盖 */
-  pointer-events: none; /* 初始不可点击 */
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 99999 !important;
+  padding: 20px 40px !important;
+  background: #ff6b6b !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 18px !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3) !important;
+  display: none !important; /* 初始隐藏 */
+  pointer-events: none !important;
+  opacity: 1 !important;
 ">
   点击开始体验
 </button>
@@ -509,23 +510,36 @@ async function loadStoryPhotos() {
     }
 
     // ========== 精准验证：粒子创建完成后，渲染3帧再显示按钮 ==========
-    let renderCount = 0;
-    const checkRenderComplete = () => {
-        composer.render(); // 强制渲染一帧（确保粒子画到画布）
-        renderCount++;
+    // 粒子创建完成后执行的渲染校验
+let renderCount = 0;
+const checkRenderComplete = () => {
+    composer.render();
+    renderCount++;
+
+    if (renderCount >= 10) {
+        const startBtn = document.getElementById('start-btn');
         
-        // 渲染3帧后（确保粒子完全显示），显示启动按钮
-        if (renderCount >= 3) {
-            startBtn.style.display = 'block !important';
-            startBtn.style.pointerEvents = 'auto'; // 恢复可点击
-            cancelAnimationFrame(checkRenderId);
-            console.log('圣诞树完全渲染完成，显示启动按钮');
+        // 兜底：如果按钮不存在，直接提示
+        if (!startBtn) {
+            alert('启动按钮未找到，请检查HTML中是否有id="start-btn"的按钮！');
             return;
         }
-        checkRenderId = requestAnimationFrame(checkRenderComplete);
-    };
-    let checkRenderId = requestAnimationFrame(checkRenderComplete);
 
+        // 核心：用 setProperty 正确设置带 !important 的样式
+        startBtn.style.setProperty('display', 'block', 'important');
+        startBtn.style.setProperty('pointer-events', 'auto', 'important');
+        
+        // 额外确保按钮不被遮挡
+        startBtn.style.setProperty('position', 'fixed', 'important');
+        startBtn.style.setProperty('z-index', '99999', 'important');
+
+        cancelAnimationFrame(checkRenderId);
+        console.log('✅ 圣诞树渲染完成，启动按钮已显示！');
+        return;
+    }
+    checkRenderId = requestAnimationFrame(checkRenderComplete);
+};
+let checkRenderId = requestAnimationFrame(checkRenderComplete);
     // 启动渲染循环（静态圣诞树）
     animate();
 }
