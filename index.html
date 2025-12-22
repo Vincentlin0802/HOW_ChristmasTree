@@ -107,38 +107,47 @@
 
     
     /* 启动按钮基础样式（核心修复：hover 失效问题） */
-/* 启动按钮基础样式（临时恢复可见性） */
+/* 启动按钮基础样式（核心修复：hover 失效问题） */
 #start-btn {
     position: fixed !important;
-    bottom: 80px !important; 
+    bottom: 85px !important; /* 底部居中 */
     left: 50% !important;
     transform: translateX(-50%) !important;
-    z-index: 99999 !important; 
+    z-index: 99999 !important; /* 确保不被遮挡 */
     padding: 22px 45px !important;
     background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
-    color: var(--gold-dark) !important;
+    color: var(--gold-dark) !important; /* 深金色文字，对比更和谐 */
     border: 2px solid var(--gold-secondary) !important;
     border-radius: 16px !important;
     font-size: 20px !important;
     font-weight: 600 !important;
-    font-family: var(--font-main) !important;
+    font-family: var(--font-main) !important; /* 匹配全局字体 */
     cursor: pointer !important;
     box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
-    /* 临时改：默认显示，注释掉隐藏属性 */
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
+    /* 核心修复1：初始隐藏用 opacity 而非 display，保留渲染空间 */
+    opacity: 0 !important;
+    visibility: hidden !important;
+    /* 核心修复2：初始允许指针事件（hover 前提），隐藏时不响应 */
+    pointer-events: none !important;
     transition: all 0.3s ease !important;
 }
 
-/* 保留hover/active样式，验证交互 */
-#start-btn:hover {
-    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
-    transform: translateX(-50%) translateY(-3px) !important;
+/* 按钮显示状态（通过 JS 添加 show 类） */
+#start-btn.show {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important; /* 恢复指针事件，允许 hover/click */
 }
 
-#start-btn:active {
+/* 启动按钮 hover 效果（提升优先级，确保生效） */
+#start-btn.show:hover {
+    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
+    transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
+}
+
+/* 启动按钮 active 效果（合并重复样式） */
+#start-btn.show:active {
     transform: translateX(-50%) translateY(1px) scale(0.95) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
@@ -693,17 +702,16 @@ const waitForTreeComplete = () => {
         setTimeout(() => {
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
-    startBtn.style.setProperty('display', 'block', 'important');
+               startBtn.style.setProperty('display', 'block', 'important');
     startBtn.style.setProperty('pointer-events', 'auto', 'important');
     startBtn.style.setProperty('z-index', '99999', 'important');
-    
-}
+            }
 			// 新增：显示标题和操作说明
             document.getElementById('title').classList.add('show');
             document.getElementById('ui-layer2').classList.add('show');
             
             console.log('✅ 圣诞树100%完整，启动按钮已显示！');
-        }, 300); // 0.5秒延迟，确保用户视觉上看到完整的树
+        }, 800); // 0.5秒延迟，确保用户视觉上看到完整的树
         return;
     }
 
@@ -821,23 +829,13 @@ waitForTreeComplete();
                 }
                 
                 this.calculatePositions(); // 计算初始形态位置
-				// 新增：初始化时直接把粒子放到出场初始位置
-        this.mesh.position.copy(this.posInitial);
-        // 初始缩放为0（避免一开始看到粒子）
-        this.mesh.scale.set(0, 0, 0);
             }
 
             // 计算该粒子在不同形态下的位置
             calculatePositions() {
                 const h = CONFIG.particles.treeHeight;
                 let t = Math.random(); // 高度比例 0~1
-				
-                // --- 1. 计算出场初始位置（所有粒子统一从屏幕右侧外开始） ---
-        this.posInitial.set(
-            80 + Math.random() * 40,  // X轴：屏幕右侧80~120px外
-            -20 + Math.random() * 20, // Y轴：随机上下
-            -10 + Math.random() * 20  // Z轴：随机前后
-        );
+                
                 // --- 1. 计算树形态坐标 (Spiral Cone) ---
                 if (Math.random() > 0.7 && !this.isDust && this.type !== 'PHOTO') {
                     // 核心树干部分 (更规则)
@@ -871,12 +869,11 @@ waitForTreeComplete();
     let target = this.posTree;
     let s = this.baseScale;
     // 核心：未启动场景时，用最快速度插值（lerpSpeed=10）
-    let lerpSpeed = window.isSceneStarted ? 3.0 : 2.0 + (time * 0.5); // 随时间加速，更平滑
+    let lerpSpeed = window.isSceneStarted ? 3.0 : 15.0; 
 
     // 未启动场景时，强制树模式，忽略其他模式
     if (!window.isSceneStarted) {
         mode = 'TREE';
-		s = this.baseScale * Math.min(time * 0.8, 1); // 0~1秒内逐渐放大到原尺寸
     }
 
     // 原有模式逻辑保留（启动后生效）
@@ -1089,9 +1086,7 @@ function addTipPhotoAsParticles(texture) {
         // 3.3 创建圆柱粒子网格
         const particleMesh = new THREE.Mesh(geometry, material);
 
-		
-       
-		// 3.4 粒子位置（模仿照片的尺寸适配思路，限定位置范围，避免太分散）
+        // 3.4 粒子位置（模仿照片的尺寸适配思路，限定位置范围，避免太分散）
         // 皮头粒子专属区域：X轴 5~10，Y/Z轴 -5~5（和普通粒子区分）
         particleMesh.position.set(
             Math.random() * 5 + 5,    // X: 5~10
@@ -1452,9 +1447,11 @@ STATE.spinVel.y *= 0.9;
 
 // 新增：检查圣诞树粒子是否归位完成
 function checkTreeSettle(currentTimeMs) {
-    // 1. 缩短超时兜底（从4秒改为2秒，匹配平滑动画）
-    if (currentTimeMs - ANIMATION_STATE.settleCheckTime > 1500) { // 1.5秒兜底
-        console.log('✅ 粒子归位完成（平滑动画结束）');
+    // 1. 超时兜底（延长到4秒，给粒子足够的动画时间）
+    if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
+        console.log('✅ 粒子归位超时，开始平滑归位动画');
+        // 启动平滑归位动画（而非瞬间瞬移）
+        startSmoothSettleAnimation();
         ANIMATION_STATE.treeSettleComplete = true;
         return;
     }
@@ -1468,7 +1465,7 @@ function checkTreeSettle(currentTimeMs) {
         
         const error = p.mesh.position.distanceTo(p.posTree);
         maxError = Math.max(maxError, error);
-        if (error > 0.2) {
+        if (error > 0.05) {
             allInPlace = false;
             break;
         }
