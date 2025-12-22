@@ -107,46 +107,38 @@
 
     
     /* 启动按钮基础样式（核心修复：hover 失效问题） */
+/* 启动按钮基础样式（临时恢复可见性） */
 #start-btn {
     position: fixed !important;
-    bottom: 80px !important; /* 底部居中 */
+    bottom: 80px !important; 
     left: 50% !important;
     transform: translateX(-50%) !important;
-    z-index: 99999 !important; /* 确保不被遮挡 */
+    z-index: 99999 !important; 
     padding: 22px 45px !important;
     background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
-    color: var(--gold-dark) !important; /* 深金色文字，对比更和谐 */
+    color: var(--gold-dark) !important;
     border: 2px solid var(--gold-secondary) !important;
     border-radius: 16px !important;
     font-size: 20px !important;
     font-weight: 600 !important;
-    font-family: var(--font-main) !important; /* 匹配全局字体 */
+    font-family: var(--font-main) !important;
     cursor: pointer !important;
     box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
-    /* 核心修复1：初始隐藏用 opacity 而非 display，保留渲染空间 */
-    opacity: 0 !important;
-    visibility: hidden !important;
-    /* 核心修复2：初始允许指针事件（hover 前提），隐藏时不响应 */
-    pointer-events: none !important;
+    /* 临时改：默认显示，注释掉隐藏属性 */
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
     transition: all 0.3s ease !important;
 }
 
-/* 按钮显示状态（通过 JS 添加 show 类） */
-#start-btn.show {
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important; /* 恢复指针事件，允许 hover/click */
-}
-
-/* 启动按钮 hover 效果（提升优先级，确保生效） */
-#start-btn.show:hover {
+/* 保留hover/active样式，验证交互 */
+#start-btn:hover {
     background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
     box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
-    transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
+    transform: translateX(-50%) translateY(-3px) !important;
 }
 
-/* 启动按钮 active 效果（合并重复样式） */
-#start-btn.show:active {
+#start-btn:active {
     transform: translateX(-50%) translateY(1px) scale(0.95) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
@@ -701,8 +693,11 @@ const waitForTreeComplete = () => {
         setTimeout(() => {
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
-               startBtn.classList.add('show');
-            }
+    startBtn.style.setProperty('display', 'block', 'important');
+    startBtn.style.setProperty('pointer-events', 'auto', 'important');
+    startBtn.style.setProperty('z-index', '99999', 'important');
+    
+}
 			// 新增：显示标题和操作说明
             document.getElementById('title').classList.add('show');
             document.getElementById('ui-layer2').classList.add('show');
