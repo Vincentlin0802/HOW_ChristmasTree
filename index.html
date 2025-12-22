@@ -6,205 +6,328 @@
     <title>HOW Christmas Tree Journey</title>
     
     <style>
-        /* 引入衬线字体，营造高级感 */
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
+    /* 引入衬线字体，营造高级感 */
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
 
-        /* 全局基础设置 */
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background-color: #020205; 
-            font-family: 'Cinzel', serif; 
-            touch-action: none; /* 禁止默认触摸行为 */
-            -webkit-user-select: none; 
-            user-select: none; 
-        }
-	#title {
-    position: absolute;
-    top: 15px; /* 距离顶部的距离 */
-    left: 50%;
-    transform: translateX(-50%); /* 居中对齐 */
-    font-family: 'Cinzel', serif;
-    font-size: 30px;
-    color: #FFD700; /* 金色 */
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px #FFD700, 0 0 5px #FFD700; /* 金光效果 */
-    letter-spacing: 2px;
-    font-weight: bold;
-    z-index: 1000; /* 让标题在最上层 */
-    text-align: center;
-    animation: fadeIn 2s ease-in-out;
-}
-.title-logo {
-    width: 130px; /* 默认宽度 */
-    height: auto; /* 保持比例 */
-    border-radius: 4px;
-    object-fit: contain;
-    transition: all 0.3s ease; /* 尺寸变化时平滑过渡 */
-}
-
-/* 全屏时放大 Logo */
-:fullscreen .title-logo {
-    width: 90px; /* 全屏宽度 */
-}
-
-/* 小屏幕适配（手机端） */
-@media (max-width: 768px) {
-    .title-logo {
-        width: 50px; /* 手机端缩小 */
+    /* 全局变量：统一金色和字体 */
+    :root {
+        --gold-primary: #ffd700;
+        --gold-secondary: #f0c808;
+        --gold-dark: #2c1f00;
+        --font-main: 'Cinzel', serif;
     }
-}
-        /* WebGL 容器 */
-        #canvas-container { 
-            width: 100vw; height: 100vh; 
-            position: absolute; top: 0; left: 0; 
-            z-index: 1; 
+
+    /* 全局基础设置 */
+    body { 
+        margin: 0; 
+        overflow: hidden; 
+        background-color: #020205; 
+        font-family: var(--font-main); 
+        touch-action: none; /* 禁止默认触摸行为 */
+        -webkit-user-select: none; 
+        user-select: none; 
+    }
+
+    #title {
+        position: absolute;
+        top: 15px; /* 距离顶部的距离 */
+        left: 50%;
+        transform: translateX(-50%); /* 居中对齐 */
+        font-family: var(--font-main);
+        font-size: 30px;
+        color: var(--gold-primary); /* 金色 */
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary); /* 金光效果 */
+        letter-spacing: 2px;
+        font-weight: bold;
+        z-index: 1000; /* 让标题在最上层 */
+        text-align: center;
+        animation: fadeIn 2s ease-in-out;
+    }
+
+    .title-logo {
+        width: 130px; /* 默认宽度 */
+        height: auto; /* 保持比例 */
+        border-radius: 4px;
+        object-fit: contain;
+        transition: all 0.3s ease; /* 尺寸变化时平滑过渡 */
+    }
+
+    /* 全屏时放大 Logo */
+    :fullscreen .title-logo {
+        width: 90px; /* 全屏宽度 */
+    }
+
+    /* 小屏幕适配（手机端） */
+    @media (max-width: 768px) {
+        .title-logo {
+            width: 50px; /* 手机端缩小 */
         }
+    }
+
+    /* WebGL 容器 */
+    #canvas-container { 
+        width: 100vw; height: 100vh; 
+        position: absolute; top: 0; left: 0; 
+        z-index: 1; 
+    }
+    
+    /* UI 交互层 (允许点击穿透) */
+    #ui-layer {
+        position: absolute; top: 0; left: 0; 
+        width: 100%; height: 100%;
+        z-index: 10; 
+        pointer-events: none; 
+        background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
+    }
+
+    #ui-layer2 {
+        position: absolute;
+        bottom: 20px; /* Move to the bottom */
+        left: 20px; /* Keep it at the left side */
+        z-index: 1000;
+        font-family: var(--font-main);
+        color: var(--gold-primary);
+        font-size: 16px;
+        line-height: 1.6;
+        pointer-events: none; /* Prevent interaction */
+    }
+
+    /* 启动按钮基础样式（核心修复：补充缺失的基础样式） */
+    #start-btn {
+        position: fixed !important;
+        bottom: 50px !important; /* 底部居中 */
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 99999 !important; /* 确保不被遮挡 */
+        padding: 22px 48px !important;
+        background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
+        color: var(--gold-dark) !important; /* 深金色文字，对比更和谐 */
+        border: 2px solid var(--gold-secondary) !important;
+        border-radius: 16px !important;
+        font-size: 20px !important;
+        font-weight: 600 !important;
+        font-family: var(--font-main) !important; /* 匹配全局字体 */
+        cursor: pointer !important;
+        box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
+        display: none !important; /* 初始隐藏 */
+        pointer-events: none !important;
+        opacity: 1 !important;
+        transition: all 0.3s ease !important;
+    }
+
+    /* 启动按钮 hover 效果 */
+    #start-btn:hover {
+        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+        box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
+        transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
+    }
+
+    /* 启动按钮 active 效果（合并重复样式） */
+    #start-btn:active {
+        transform: translateX(-50%) translateY(1px) scale(0.95) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    }
+
+    /* 启动按钮移动端适配 */
+    @media (max-width: 768px) {
+        #start-btn {
+            padding: 16px 32px !important;
+            font-size: 16px !important;
+            bottom: 30px !important;
+        }
+    }
+
+    /* Loading 动画：带文字提示 + 金色优化版 */
+    #loader {
+        position: absolute; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%;
+        background: #000; /* 黑色背景突出金色元素 */
+        z-index: 100;
+        display: flex; 
+        flex-direction: column; /* 改为列布局，容纳加载圈+文字 */
+        align-items: center; 
+        justify-content: center;
+        gap: 24px; /* 加载圈和文字的间距 */
+        transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+        opacity: 1;
+    }
+
+    #loader.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.95);
+    }
+
+    .spinner {
+        width: 60px;
+        height: 60px; 
+        border: 3px solid rgba(255, 215, 0, 0.2);
+        border-top: 3px solid var(--gold-primary);
+        border-radius: 50%; 
+        animation: spin 1.2s ease-in-out infinite;
+        position: relative;
+    }
+
+    .spinner::after {
+        content: '';
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        right: 5px;
+        bottom: 5px;
+        border: 2px solid rgba(255, 215, 0, 0.15);
+        border-top: 2px solid var(--gold-secondary);
+        border-radius: 50%;
+        animation: spin 0.8s ease-in-out reverse infinite;
+    }
+
+    /* 加载提示文字样式 */
+    .loader-text {
+        color: var(--gold-primary); /* 金色文字，匹配主色调 */
+        font-size: 16px;
+        font-weight: 400;
+        letter-spacing: 0.5px; /* 轻微字间距，更易读 */
+        text-align: center;
+        line-height: 1.5;
+        max-width: 80%; /* 适配小屏幕，避免文字溢出 */
+        opacity: 0.9; /* 轻微透明，不抢加载圈焦点 */
+        font-family: var(--font-main);
+    }
+
+    @keyframes spin { 
+        0% { transform: rotate(0deg); } 
+        100% { transform: rotate(360deg); } 
+    }
+
+    /* 右上角控制按钮组 */
+    #top-right-controls {
+        position: absolute; top: 20px; right: 20px;
+        z-index: 30; 
+        display: flex; 
+        flex-direction: column; /* 纵向排列 */
+        gap: 15px; /* 按钮间距 */
+        pointer-events: auto;
+    }
+
+    /* 按钮样式  */
+    .control-btn {
+        background: rgba(10, 10, 10, 0.6);
+        border: 1px solid rgba(255, 215, 0, 0.4);
+        color: var(--gold-primary); 
         
-        /* UI 交互层 (允许点击穿透) */
-        #ui-layer {
-            position: absolute; top: 0; left: 0; 
-            width: 100%; height: 100%;
-            z-index: 10; 
-            pointer-events: none; 
-            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
-        }
-
-		#ui-layer2 {
-    position: absolute;
-    bottom: 20px; /* Move to the bottom */
-    left: 20px; /* Keep it at the left side */
-    z-index: 1000;
-    font-family: 'Cinzel', serif;
-    color: #FFD700;
-    font-size: 16px;
-    line-height: 1.6;
-    pointer-events: none; /* Prevent interaction */
-}
-
-		<!-- 可选：添加hover交互效果（如果需要，放到style标签中） -->
-
-#start-btn:hover {
-  background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
-  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
-  transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
-}
-#start-btn:active {
-  transform: translateX(-50%) translateY(1px) !important; /* 点击下沉，模拟按压 */
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
-}
-
-        /* Loading 动画 */
-        #loader {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 100;
-            display: flex; align-items: center; justify-content: center;
-            transition: opacity 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        .spinner {
-            width: 40px; height: 40px; 
-            border: 2px solid rgba(212, 175, 55, 0.1); 
-            border-top: 2px solid #d4af37; border-radius: 50%; 
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* 右上角控制按钮组 */
-        #top-right-controls {
-            position: absolute; top: 20px; right: 20px;
-            z-index: 30; 
-            display: flex; 
-            flex-direction: column; /* 纵向排列 */
-            gap: 15px; /* 按钮间距 */
-            pointer-events: auto;
-        }
-	#start-btn:active {
-  transform: translate(-50%, -50%) scale(0.95);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-        /* 按钮样式  */
-        .control-btn {
-            background: rgba(10, 10, 10, 0.6);
-            border: 1px solid rgba(212, 175, 55, 0.4);
-            color: #d4af37; 
-            
-            /* 取消圆形宽高，改为自适应或固定宽度 */
-            width: 100px; 
-            height: auto;
-            padding: 10px 0; /* 上下留白 */
-            
-            border-radius: 12px; /* 圆角矩形 */
-            
-            display: flex; align-items: center; justify-content: center;
-            font-family: 'Cinzel', serif; /* 保持字体风格 */
-            font-size: 14px; 
-            font-weight: 600;
-            letter-spacing: 1px;
-            cursor: pointer;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
-            box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
-            outline: none; -webkit-tap-highlight-color: transparent;
-        }
-        .control-btn:hover {
-            background: rgba(212, 175, 55, 0.2);
-            border-color: rgba(212, 175, 55, 0.8);
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
-            transform: scale(1.05); color: #fff;
-        }
-        .control-btn:active { transform: scale(0.95); }
-
-        /* 隐藏的文件输入框 */
-        #file-input { display: none; }
+        /* 取消圆形宽高，改为自适应或固定宽度 */
+        width: 100px; 
+        height: auto;
+        padding: 10px 0; /* 上下留白 */
         
-        /* 摄像头预览窗 (动态调整大小) */
-        #webcam-wrapper {
-            position: absolute; 
-            bottom: 20px; right: 20px; 
-            /* 删除固定的 width 和 height，改为由 JS 控制 */
-            /* width: 72px; height: 96px; */ 
-            opacity: 0; pointer-events: none;
-            border: 1px solid rgba(212, 175, 55, 0.5);
-            border-radius: 4px;
-            background: #000; 
-            z-index: 50;
-            /* 关键：确保容器紧贴 Canvas 内容 */
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-        }
+        border-radius: 12px; /* 圆角矩形 */
+        
+        display: flex; align-items: center; justify-content: center;
+        font-family: var(--font-main); /* 保持字体风格 */
+        font-size: 14px; 
+        font-weight: 600;
+        letter-spacing: 1px;
+        cursor: pointer;
+        backdrop-filter: blur(5px);
+        transition: all 0.3s ease;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+        outline: none; -webkit-tap-highlight-color: transparent;
+    }
 
-        #webcam { display: none; }
-        
-        #webcam-preview {
-            display: block; /* 消除 img/canvas底部的默认间距 */
-            width: 100%; 
-            height: 100%; 
-            transform: scaleX(-1); /* 镜像翻转 */
-        }
-		
-        
-        /* 下载按钮 (特殊功能) */
-        .download-btn-container {
-            position: fixed; bottom: 20px; left: 50%;
-            transform: translateX(-50%); z-index: 1000;
-        }
-        .download-btn {
-            background-color: #2196F3; color: white;
-            padding: 10px 20px; border: none; border-radius: 5px;
-            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            position: relative; padding-right: 35px;
-        }
-        .download-btn:hover { background-color: #1976D2; }
-        .close-btn {
-            background-color: #9e9e9e; color: white;
-            width: 20px; height: 20px; border: none; border-radius: 50%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-            font-size: 14px; line-height: 1;
-        }
-        .hidden { display: none !important; }
-    </style>
+    .control-btn:hover {
+        background: rgba(255, 215, 0, 0.2);
+        border-color: rgba(255, 215, 0, 0.8);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        transform: scale(1.05); color: #fff;
+    }
+
+    .control-btn:active { transform: scale(0.95); }
+
+    /* 隐藏的文件输入框 */
+    #file-input { display: none; }
+    
+    /* 摄像头预览窗 (动态调整大小) */
+    #webcam-wrapper {
+        position: absolute; 
+        bottom: 20px; right: 20px; 
+        /* 删除固定的 width 和 height，改为由 JS 控制 */
+        opacity: 0; pointer-events: none;
+        border: 1px solid rgba(255, 215, 0, 0.5);
+        border-radius: 4px;
+        background: #000; 
+        z-index: 50;
+        /* 关键：确保容器紧贴 Canvas 内容 */
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: scale(0.95); /* 初始缩小 */
+    }
+
+    #webcam-wrapper.show {
+        opacity: 1;
+        pointer-events: auto;
+        transform: scale(1); /* 显示时恢复正常大小 */
+    }
+
+    #webcam { display: none; }
+    
+    #webcam-preview {
+        display: block; /* 消除 img/canvas底部的默认间距 */
+        width: 100%; 
+        height: 100%; 
+        transform: scaleX(-1); /* 镜像翻转 */
+    }
+
+    /* 下载按钮 (特殊功能) - 改为金色风格 */
+    .download-btn-container {
+        position: fixed; bottom: 20px; left: 50%;
+        transform: translateX(-50%); z-index: 1000;
+    }
+
+    .download-btn {
+        background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
+        color: var(--gold-dark) !important;
+        border: 1px solid var(--gold-secondary) !important;
+        padding: 10px 20px; 
+        border-radius: 5px;
+        cursor: pointer; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        position: relative; 
+        padding-right: 35px;
+        font-family: var(--font-main);
+    }
+
+    .download-btn:hover { 
+        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+    }
+
+    .close-btn {
+        background-color: rgba(0,0,0,0.5) !important;
+        color: var(--gold-primary) !important;
+        width: 20px; height: 20px; 
+        border: none; 
+        border-radius: 50%;
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        position: absolute; right: 8px; top: 50%; 
+        transform: translateY(-50%);
+        font-size: 14px; line-height: 1;
+    }
+
+    .hidden { display: none !important; }
+
+    /* 补充 fadeIn 动画（原代码引用但未定义） */
+    @keyframes fadeIn {
+        0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+        100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+</style>
 
     <script type="importmap">
         {
@@ -218,7 +341,13 @@
 </head>
 
 <body>
-    <div id="loader"><div class="spinner"></div></div>
+    <div id="loader">
+    <div class="spinner"></div>
+    <div class="loader-text">
+        Initial loading requires image content, please wait
+    </div>
+</div>
+
 
     <div id="canvas-container"></div>
     <!-- 标题 -->
