@@ -251,7 +251,7 @@
   pointer-events: none !important;
   opacity: 1 !important;
 ">
-  点击开始体验
+  Start HOW JOURNEY
 </button>
     <audio id="bg-music" autoplay loop >
     <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
@@ -489,7 +489,7 @@ async function loadStoryPhotos() {
 
     // ========== 启动按钮点击逻辑 ==========
     startBtn.addEventListener('click', async () => {
-        startBtn.textContent = '请求摄像头权限中...';
+        startBtn.textContent = 'Requesting camera permission...';
         startBtn.disabled = true; // 禁用按钮，避免重复点击
         
         await initCameraAndGesture(); // 先请求摄像头权限
@@ -540,6 +540,7 @@ const checkRenderComplete = () => {
     checkRenderId = requestAnimationFrame(checkRenderComplete);
 };
 let checkRenderId = requestAnimationFrame(checkRenderComplete);
+    }, 800); // 可选：额外加800ms固定延迟，确保场景完全稳定
     // 启动渲染循环（静态圣诞树）
     animate();
 }
@@ -849,7 +850,7 @@ let checkRenderId = requestAnimationFrame(checkRenderComplete);
         setTimeout(() => {
             console.log(`圣诞树粒子创建完成：主体装饰${CONFIG.particles.count}个 + 星尘${CONFIG.particles.dustCount}个 + 树顶星星`);
             resolve(true); // 告诉init()：粒子全部创建好了
-        }, 200);
+        }, 600);
     });
 }
         function createStarTopper() {
