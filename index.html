@@ -540,7 +540,7 @@ const waitForTreeComplete = () => {
                 startBtn.style.setProperty('z-index', '99999', 'important');
             }
             console.log('✅ 圣诞树100%完整，启动按钮已显示！');
-        }, 500); // 0.5秒延迟，确保用户视觉上看到完整的树
+        }, 800); // 0.5秒延迟，确保用户视觉上看到完整的树
         return;
     }
 
@@ -624,8 +624,8 @@ waitForTreeComplete();
             // 辉光效果：阈值、强度、半径
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.7; 
-            bloomPass.strength = 0.6; 
-            bloomPass.radius = 0.5;
+            bloomPass.strength = 0.4; 
+            bloomPass.radius = 0.4;
             
             composer = new EffectComposer(renderer);
             composer.addPass(renderScene);
@@ -1253,48 +1253,71 @@ function processGestures(lm) {
 
 // 新增：检查圣诞树粒子是否归位完成
 function checkTreeSettle(currentTimeMs) {
-    // 1. 超时兜底（延长到4秒，给粒子足够时间）
+    // 1. 超时兜底（延长到4秒，给粒子足够的动画时间）
     if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
+        console.log('✅ 粒子归位超时，开始平滑归位动画');
+        // 启动平滑归位动画（而非瞬间瞬移）
+        startSmoothSettleAnimation();
         ANIMATION_STATE.treeSettleComplete = true;
-        console.log('✅ 粒子归位超时，强制对齐+判定完成');
-        // 强制把所有非星尘粒子直接移到目标位置（视觉上瞬间完整）
-        for (let i = 0; i < particleSystem.length; i++) {
-            const p = particleSystem[i];
-            if (p.type === 'DUST') continue; // 星尘保留动态效果
-            p.mesh.position.copy(p.posTree); // 强制归位
-            p.mesh.scale.copy(new THREE.Vector3(p.baseScale, p.baseScale, p.baseScale)); // 强制恢复基础尺寸
-        }
         return;
     }
 
-    // 2. 全量检查（不再抽样，确保100%粒子归位）
+    // 2. 全量检查（判断是否需要归位）
     let allInPlace = true;
-    let maxError = 0; // 记录最大误差（找到“拖后腿”的粒子）
+    let maxError = 0;
     for (let i = 0; i < particleSystem.length; i++) {
         const p = particleSystem[i];
         if (p.type === 'DUST') continue;
         
         const error = p.mesh.position.distanceTo(p.posTree);
-        maxError = Math.max(maxError, error); // 记录最大误差
-        
-        // 误差>0.05就判定未归位（严格但不极端）
+        maxError = Math.max(maxError, error);
         if (error > 0.05) {
             allInPlace = false;
-            break; // 只要有一个粒子没归位，直接判定未完成
+            break;
         }
     }
 
-    // 3. 所有粒子归位完成 → 强制对齐+标记完成
+    // 3. 所有粒子接近归位 → 启动最终平滑对齐（避免微小晃动）
     if (allInPlace) {
-        // 强制对齐所有粒子（确保视觉无偏差）
+        startSmoothSettleAnimation(0.2); // 快速平滑（0.2秒）
+        ANIMATION_STATE.treeSettleComplete = true;
+        console.log(`✅ 粒子接近归位，最大误差：${maxError.toFixed(4)}，开始最终平滑对齐`);
+    }
+}
+
+		// 平滑归位动画：粒子在指定时间内 lerp 到目标位置
+function startSmoothSettleAnimation(duration = 1) {
+    // 记录动画开始时间
+    const startTime = Date.now();
+    const animationDuration = duration * 1000; // 转毫秒
+
+    // 动画循环函数
+    function animateSettle() {
+        // 计算动画进度（0-1）
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / animationDuration, 1);
+
+        // 对每个非星尘粒子进行平滑插值
         for (let i = 0; i < particleSystem.length; i++) {
             const p = particleSystem[i];
             if (p.type === 'DUST') continue;
-            p.mesh.position.copy(p.posTree);
+
+            // 线性插值到目标位置（progress=1时完全归位）
+            p.mesh.position.lerp(p.posTree, progress);
+            // 同时平滑恢复基础尺寸
+            p.mesh.scale.lerp(new THREE.Vector3(p.baseScale, p.baseScale, p.baseScale), progress);
         }
-        ANIMATION_STATE.treeSettleComplete = true;
-        console.log(`✅ 所有粒子归位完成，最大误差：${maxError.toFixed(4)}`);
+
+        // 动画未完成则继续循环
+        if (progress < 1) {
+            requestAnimationFrame(animateSettle);
+        } else {
+            console.log('✅ 粒子平滑归位动画完成');
+        }
     }
+
+    // 启动动画
+    requestAnimationFrame(animateSettle);
 }
         function setupEvents() {
             // 窗口调整
