@@ -28,6 +28,24 @@
         user-select: none; 
     }
 
+    /* 初始隐藏UI元素：标题、操作说明、启动按钮 */
+    #start-btn, #title, #ui-layer2 {
+        display: none !important;
+        pointer-events: none !important;
+        opacity: 0 !important;
+        transition: all 0.5s ease !important;
+    }
+
+    /* 显示状态类 */
+    .show-ui {
+        display: block !important;
+        pointer-events: auto !important;
+        opacity: 1 !important;
+    }
+    #start-btn.show-ui {
+        display: inline-block !important;
+    }
+
     #title {
         position: absolute;
         top: 15px; /* 距离顶部的距离 */
@@ -109,9 +127,6 @@
         font-family: var(--font-main) !important; /* 匹配全局字体 */
         cursor: pointer !important;
         box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
-        display: none !important; /* 初始隐藏 */
-        pointer-events: none !important;
-        opacity: 1 !important;
         transition: all 0.3s ease !important;
     }
 
@@ -327,6 +342,22 @@
         0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
         100% { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
+
+    /* 操作说明显示动画 */
+    #ui-layer2.show-ui {
+        animation: fadeInUp 0.8s ease-in-out !important;
+    }
+
+    @keyframes fadeInUp {
+        0% { 
+            opacity: 0; 
+            transform: translateY(20px); 
+        }
+        100% { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+    }
 </style>
 
     <script type="importmap">
@@ -342,20 +373,18 @@
 
 <body>
     <div id="loader">
-    <div class="spinner"></div>
-    <div class="loader-text">
-        Initial loading requires image content, please wait
+        <div class="spinner"></div>
+        <div class="loader-text">
+            Initial loading requires image content, please wait
+        </div>
     </div>
-</div>
-
 
     <div id="canvas-container"></div>
     <!-- 标题 -->
-<div id="title">
-    <img id="uploaded-image" src="" alt="Uploaded Image" class="title-logo",style="display: none;">
-    <span><br> Wish You Merry Christmas</span>
-</div>
-
+    <div id="title">
+        <img id="uploaded-image" src="" alt="Uploaded Image" class="title-logo" style="display: none;">
+        <span><br> Wish You Merry Christmas</span>
+    </div>
 
     <div id="ui-layer">
         <div id="top-right-controls">
@@ -363,44 +392,26 @@
         </div>
     </div>
 	
-	<div id="ui-layer2">
-    <div class="instruction">✊→<b>Fist</b> to SUMMON Tree</div>
-    <div class="instruction">✋→<b>Open Hand</b> to SCATTER</div>
-	<div class="instruction">Move✋→<b>Move Palm</b> to Control ROTATION</div>
-    <div class="instruction">🤏→<b>Pinch</b> to CATCH Memory Photo</div>
-</div>
+    <div id="ui-layer2">
+        <div class="instruction">✊→<b>Fist</b> to SUMMON Tree</div>
+        <div class="instruction">✋→<b>Open Hand</b> to SCATTER</div>
+        <div class="instruction">Move✋→<b>Move Palm</b> to Control ROTATION</div>
+        <div class="instruction">🤏→<b>Pinch</b> to CATCH Memory Photo</div>
+    </div>
 
     <div id="webcam-wrapper">
         <video id="webcam" autoplay playsinline webkit-playsinline></video>
         <canvas id="webcam-preview"></canvas>
     </div>
-    <!-- 启动按钮：底部居中显示，金色主色调优化 -->
-<button id="start-btn" style="
-  position: fixed !important;
-  bottom: 50px !important; /* 距离底部50px，可根据需要调整 */
-  left: 50% !important;
-  transform: translateX(-50%) !important; /* 仅水平居中，去掉垂直偏移 */
-  z-index: 99999 !important;
-  padding: 22px 48px !important; /* 优化内边距，更舒展 */
-  background: linear-gradient(135deg, #ffd700 0%, #f0c808 100%) !important; /* 金色渐变，更有质感 */
-  color: #2c1f00 !important; /* 深金色文字，对比更和谐 */
-  border: 2px solid #e0b800 !important; /* 暗金边框，增加层次 */
-  border-radius: 16px !important; /* 更大圆角，更柔和 */
-  font-size: 20px !important;
-  font-weight: 600 !important; /* 加粗文字，更醒目 */
-  cursor: pointer !important;
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important; /* 金色柔光阴影，贴合主色调 */
-  display: none !important; /* 初始隐藏 */
-  pointer-events: none !important;
-  opacity: 1 !important;
-  transition: all 0.3s ease !important; /*  hover动画过渡 */
-">
-  Start HOW JOURNEY <!-- 小修正：原HOW改为OUR更通顺 -->
-</button>
+    
+    <!-- 启动按钮 -->
+    <button id="start-btn">
+        Start HOW JOURNEY
+    </button>
+    
     <audio id="bg-music" autoplay loop >
-    <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
-</audio>
-	
+        <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
+    </audio>
 
     <div class="download-btn-container" id="downloadContainer">
         <button class="download-btn" onclick="downloadHTML()">
@@ -420,136 +431,134 @@
         // ==========================================
         // 1. CONFIG: 全局配置参数 (方便调整)
         // ==========================================
+        const CONFIG = {
+            colors: {
+                bg: 0x020202, 
+                gold: 0xffd700, 
+                red: 0x880000, 
+                green: 0x004400,
+                pink: 0xff69b4
+            },
+            particles: {
+                count: 1800,      // 核心粒子数
+                dustCount: 1500,  // 氛围星尘数
+                treeHeight: 28,   // 树高
+                treeRadius: 9     // 树底半径
+            },
+            camera: {
+                z: 55 // 初始摄像机距离
+            },
+            gestures: {
+                pinchThreshold: 0.05, // 捏合判定阈值
+                palmOpenThreshold: 0.35, // 手掌张开判定阈值
+                sensitivity: 6.0 // 手势旋转灵敏度
+            }
+        };
+
         // ==========================================
-// 1. CONFIG: 全局配置参数 (方便调整)
-// ==========================================
-const CONFIG = {
-    colors: {
-        bg: 0x020202, 
-        gold: 0xffd700, 
-        red: 0x880000, 
-        green: 0x004400,
-        pink: 0xff69b4
-    },
-    particles: {
-        count: 1800,      // 核心粒子数
-        dustCount: 1500,  // 氛围星尘数
-        treeHeight: 28,   // 树高
-        treeRadius: 9     // 树底半径
-    },
-    camera: {
-        z: 55 // 初始摄像机距离
-    },
-    gestures: {
-        pinchThreshold: 0.05, // 捏合判定阈值
-        palmOpenThreshold: 0.35, // 手掌张开判定阈值
-        sensitivity: 6.0 // 手势旋转灵敏度
-    }
-};
+        // 新增：粒子归位状态管理（独立全局变量，不在CONFIG内部）
+        // ==========================================
+        const ANIMATION_STATE = {
+            treeSettleComplete: false, // 圣诞树粒子是否归位完成
+            settleCheckTime: 0,        // 开始检查归位的时间
+            settleThreshold: 0.1,     // 归位判定阈值（位置误差<0.01则完成）
+            settleDelay: 2000          // 等待归位的最大时间（2秒）
+        };
 
-// ==========================================
-// 新增：粒子归位状态管理（独立全局变量，不在CONFIG内部）
-// ==========================================
-const ANIMATION_STATE = {
-    treeSettleComplete: false, // 圣诞树粒子是否归位完成
-    settleCheckTime: 0,        // 开始检查归位的时间
-    settleThreshold: 0.1,     // 归位判定阈值（位置误差<0.01则完成）
-    settleDelay: 2000          // 等待归位的最大时间（2秒）
-};
-	// ==========================================
-// 新增：配置读取 + 本地图片加载函数
-// ==========================================
-/**
- * 读取指定文件夹的 config.json
- * @param {string} folderPath 文件夹路径（如 "./assets/title/"）
- * @returns {Promise<Object>} 配置对象
- */
-async function loadConfig(folderPath) {
-  try {
-    const response = await fetch(`${folderPath}config.json`);
-    if (!response.ok) throw new Error(`读取配置失败：${response.status}`);
-    return await response.json();
-  } catch (err) {
-    console.error('配置读取失败：', err);
-    return null;
-  }
-}
+        // ==========================================
+        // 新增：配置读取 + 本地图片加载函数
+        // ==========================================
+        /**
+         * 读取指定文件夹的 config.json
+         * @param {string} folderPath 文件夹路径（如 "./assets/title/"）
+         * @returns {Promise<Object>} 配置对象
+         */
+        async function loadConfig(folderPath) {
+            try {
+                const response = await fetch(`${folderPath}config.json`);
+                if (!response.ok) throw new Error(`读取配置失败：${response.status}`);
+                return await response.json();
+            } catch (err) {
+                console.error('配置读取失败：', err);
+                return null;
+            }
+        }
 
-/**
- * 加载本地图片为THREE纹理
- * @param {string} folderPath 文件夹路径
- * @param {string} imgName 图片文件名
- * @returns {Promise<THREE.Texture>} 纹理对象
- */
-async function loadLocalTexture(folderPath, imgName) {
-  return new Promise((resolve, reject) => {
-    const imgPath = `${folderPath}${imgName}`;
-    new THREE.TextureLoader().load(
-      imgPath,
-      (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        resolve(texture);
-      },
-      undefined,
-      (err) => reject(`加载图片${imgPath}失败：${err}`)
-    );
-  });
-}
+        /**
+         * 加载本地图片为THREE纹理
+         * @param {string} folderPath 文件夹路径
+         * @param {string} imgName 图片文件名
+         * @returns {Promise<THREE.Texture>} 纹理对象
+         */
+        async function loadLocalTexture(folderPath, imgName) {
+            return new Promise((resolve, reject) => {
+                const imgPath = `${folderPath}${imgName}`;
+                new THREE.TextureLoader().load(
+                    imgPath,
+                    (texture) => {
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        resolve(texture);
+                    },
+                    undefined,
+                    (err) => reject(`加载图片${imgPath}失败：${err}`)
+                );
+            });
+        }
 
-/**
- * 加载标题Logo（从 assets/title/config.json 读取）
- */
-async function loadTitleLogo() {
-  const folderPath = "./assets/title/";
-  const config = await loadConfig(folderPath);
-  if (!config || !config.logo) return;
+        /**
+         * 加载标题Logo（从 assets/title/config.json 读取）
+         */
+        async function loadTitleLogo() {
+            const folderPath = "./assets/title/";
+            const config = await loadConfig(folderPath);
+            if (!config || !config.logo) return;
 
-  // 加载Logo到标题区
-  const logoImg = document.getElementById('uploaded-image');
-  logoImg.src = `${folderPath}${config.logo}`;
-  logoImg.style.display = 'inline-block';
-  console.log('标题Logo加载完成');
-}
+            // 加载Logo到标题区
+            const logoImg = document.getElementById('uploaded-image');
+            logoImg.src = `${folderPath}${config.logo}`;
+            logoImg.style.display = 'inline-block';
+            console.log('标题Logo加载完成');
+        }
 
-/**
- * 加载皮头照片（从 assets/tip/config.json 读取）
- */
-async function loadTipPhotos() {
-  const folderPath = "./assets/tip/";
-  const config = await loadConfig(folderPath);
-  if (!config || !config.images || config.images.length === 0) return;
+        /**
+         * 加载皮头照片（从 assets/tip/config.json 读取）
+         */
+        async function loadTipPhotos() {
+            const folderPath = "./assets/tip/";
+            const config = await loadConfig(folderPath);
+            if (!config || !config.images || config.images.length === 0) return;
 
-  // 遍历配置中的图片，生成皮头粒子
-  for (const imgName of config.images) {
-    try {
-      const texture = await loadLocalTexture(folderPath, imgName);
-      addTipPhotoAsParticles(texture); // 复用原有粒子生成函数
-      console.log(`皮头照片${imgName}加载完成`);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-}
+            // 遍历配置中的图片，生成皮头粒子
+            for (const imgName of config.images) {
+                try {
+                    const texture = await loadLocalTexture(folderPath, imgName);
+                    addTipPhotoAsParticles(texture); // 复用原有粒子生成函数
+                    console.log(`皮头照片${imgName}加载完成`);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
 
-/**
- * 加载故事照片（从 assets/story/config.json 读取）
- */
-async function loadStoryPhotos() {
-  const folderPath = "./assets/story/";
-  const config = await loadConfig(folderPath);
-  if (!config || !config.images || config.images.length === 0) return;
+        /**
+         * 加载故事照片（从 assets/story/config.json 读取）
+         */
+        async function loadStoryPhotos() {
+            const folderPath = "./assets/story/";
+            const config = await loadConfig(folderPath);
+            if (!config || !config.images || config.images.length === 0) return;
 
-  // 遍历配置中的图片，生成普通照片粒子
-  for (const imgName of config.images) {
-    try {
-      const texture = await loadLocalTexture(folderPath, imgName);
-      addPhotoToScene(texture); // 复用原有照片生成函数
-      console.log(`故事照片${imgName}加载完成`);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-}
+            // 遍历配置中的图片，生成普通照片粒子
+            for (const imgName of config.images) {
+                try {
+                    const texture = await loadLocalTexture(folderPath, imgName);
+                    addPhotoToScene(texture); // 复用原有照片生成函数
+                    console.log(`故事照片${imgName}加载完成`);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
 
         // ==========================================
         // 2. STATE: 运行时状态管理
@@ -587,114 +596,115 @@ async function loadStoryPhotos() {
         // 3. 初始化入口
         // ==========================================
         async function init() {
-    initThree();          // 初始化 Three.js 场景
-    setupEnvironment();   // 设置环境贴图
-    setupLights();        // 设置灯光
-    createTextures();     // 生成程序化纹理
-    createGalaxyBackground(); // 创建背景星空
-    setupPostProcessing();// 设置辉光后期处理
-    setupEvents();        // 绑定 DOM 事件
-    
-    // 加载所有图片资源
-    await loadTitleLogo();   // 加载标题Logo
-    await loadTipPhotos();   // 加载皮头照片
-    await loadStoryPhotos(); // 加载故事照片
+            initThree();          // 初始化 Three.js 场景
+            setupEnvironment();   // 设置环境贴图
+            setupLights();        // 设置灯光
+            createTextures();     // 生成程序化纹理
+            createGalaxyBackground(); // 创建背景星空
+            setupPostProcessing();// 设置辉光后期处理
+            setupEvents();        // 绑定 DOM 事件
+            
+            // 加载所有图片资源
+            await loadTitleLogo();   // 加载标题Logo
+            await loadTipPhotos();   // 加载皮头照片
+            await loadStoryPhotos(); // 加载故事照片
 
-    // ========== 核心修改：等待圣诞树粒子完全创建 ==========
-    await createParticles(); // 替换原来的同步调用，等粒子创建完
+            // ========== 核心修改：等待圣诞树粒子完全创建 ==========
+            await createParticles(); // 替换原来的同步调用，等粒子创建完
 
-    // 移除 Loading 遮罩
-    const loader = document.getElementById('loader');
-    loader.style.opacity = 0;
-    setTimeout(() => loader.remove(), 1200);
+            // 移除 Loading 遮罩
+            const loader = document.getElementById('loader');
+            loader.style.opacity = 0;
+            setTimeout(() => loader.remove(), 1200);
 
-    // ========== 全局状态初始化 ==========
-    window.isSceneStarted = false; // 场景是否启动
-    window.mediaPipeInited = false; // 摄像头是否初始化
-    const startBtn = document.getElementById('start-btn');
-    const bgMusic = document.getElementById('bg-music');
-    const musicBtn = document.getElementById('music-play-btn');
-
-    // ========== 音乐播放函数 ==========
-    const playMusic = () => {
-        if (!bgMusic || !window.isSceneStarted) return;
-        bgMusic.volume = 0.5;
-        bgMusic.load();
-        bgMusic.play()
-            .then(() => {
-                console.log('背景音乐播放成功');
-                if (musicBtn) musicBtn.style.display = 'none';
-            })
-            .catch(e => {
-                console.error('音乐播放失败：', e);
-                if (musicBtn) musicBtn.style.display = 'block';
-            });
-    };
-
-    // ========== 摄像头初始化函数（点击后执行） ==========
-    const initCameraAndGesture = async () => {
-        if (window.mediaPipeInited) return; // 避免重复初始化
-        try {
-            await initMediaPipe(); // 请求摄像头权限
-            window.mediaPipeInited = true;
-            console.log('摄像头初始化成功，手势控制已开启');
-        } catch (e) {
-            console.warn('摄像头初始化失败：', e);
-            alert('请允许摄像头权限，否则无法使用手势控制！');
-        }
-    };
-
-    // ========== 启动按钮点击逻辑 ==========
-    startBtn.addEventListener('click', async () => {
-        startBtn.textContent = 'Requesting camera permission...';
-        startBtn.disabled = true; // 禁用按钮，避免重复点击
-        
-        await initCameraAndGesture(); // 先请求摄像头权限
-        window.isSceneStarted = true; // 解锁动画/手势
-        startBtn.style.display = 'none'; // 隐藏按钮
-        playMusic(); // 播放音乐
-    });
-
-    // ========== 音乐兜底按钮 ==========
-    if (musicBtn) {
-        musicBtn.addEventListener('click', () => {
-            if (!window.isSceneStarted) {
-                alert('请先点击“开始体验”按钮启动场景！');
-                return;
-            }
-            playMusic();
-        });
-    }
-
-    // 替换init函数中原有的“延迟+渲染验证”代码
-// ========== 精准验证：粒子归位完成 + 渲染稳定后显示按钮 ==========
-const waitForTreeComplete = () => {
-    composer.render(); 
-
-    // 基础条件：粒子归位完成 + 粒子创建后至少1秒
-    const isReady = ANIMATION_STATE.treeSettleComplete && (clock.getElapsedTime() * 1000 - ANIMATION_STATE.settleCheckTime > 1000);
-    
-    if (isReady) {
-        // 核心修改：额外等待0.5秒，让视觉完全稳定
-        setTimeout(() => {
+            // ========== 全局状态初始化 ==========
+            window.isSceneStarted = false; // 场景是否启动
+            window.mediaPipeInited = false; // 摄像头是否初始化
             const startBtn = document.getElementById('start-btn');
-            if (startBtn) {
-                startBtn.style.setProperty('display', 'block', 'important');
-                startBtn.style.setProperty('pointer-events', 'auto', 'important');
-                startBtn.style.setProperty('z-index', '99999', 'important');
+            const bgMusic = document.getElementById('bg-music');
+            const musicBtn = document.getElementById('music-play-btn');
+
+            // ========== 音乐播放函数 ==========
+            const playMusic = () => {
+                if (!bgMusic || !window.isSceneStarted) return;
+                bgMusic.volume = 0.5;
+                bgMusic.load();
+                bgMusic.play()
+                    .then(() => {
+                        console.log('背景音乐播放成功');
+                        if (musicBtn) musicBtn.style.display = 'none';
+                    })
+                    .catch(e => {
+                        console.error('音乐播放失败：', e);
+                        if (musicBtn) musicBtn.style.display = 'block';
+                    });
+            };
+
+            // ========== 摄像头初始化函数（点击后执行） ==========
+            const initCameraAndGesture = async () => {
+                if (window.mediaPipeInited) return; // 避免重复初始化
+                try {
+                    await initMediaPipe(); // 请求摄像头权限
+                    window.mediaPipeInited = true;
+                    console.log('摄像头初始化成功，手势控制已开启');
+                } catch (e) {
+                    console.warn('摄像头初始化失败：', e);
+                    alert('请允许摄像头权限，否则无法使用手势控制！');
+                }
+            };
+
+            // ========== 启动按钮点击逻辑 ==========
+            startBtn.addEventListener('click', async () => {
+                startBtn.textContent = 'Requesting camera permission...';
+                startBtn.disabled = true; // 禁用按钮，避免重复点击
+                
+                await initCameraAndGesture(); // 先请求摄像头权限
+                window.isSceneStarted = true; // 解锁动画/手势
+                startBtn.style.display = 'none'; // 隐藏按钮
+                playMusic(); // 播放音乐
+            });
+
+            // ========== 音乐兜底按钮 ==========
+            if (musicBtn) {
+                musicBtn.addEventListener('click', () => {
+                    if (!window.isSceneStarted) {
+                        alert('请先点击“开始体验”按钮启动场景！');
+                        return;
+                    }
+                    playMusic();
+                });
             }
-            console.log('✅ 圣诞树100%完整，启动按钮已显示！');
-        }, 800); // 0.5秒延迟，确保用户视觉上看到完整的树
-        return;
-    }
 
-    requestAnimationFrame(waitForTreeComplete);
-};
+            // 替换init函数中原有的“延迟+渲染验证”代码
+            // ========== 精准验证：粒子归位完成 + 渲染稳定后显示按钮 ==========
+            const waitForTreeComplete = () => {
+                composer.render(); 
 
-// 粒子创建完成后，启动等待检查
-waitForTreeComplete();
-			animate();
-}
+                // 基础条件：粒子归位完成 + 粒子创建后至少1秒
+                const isReady = ANIMATION_STATE.treeSettleComplete && (clock.getElapsedTime() * 1000 - ANIMATION_STATE.settleCheckTime > 1000);
+                
+                if (isReady) {
+                    // 核心修改：同步显示标题、操作说明、启动按钮
+                    const startBtn = document.getElementById('start-btn');
+                    const title = document.getElementById('title');
+                    const uiLayer2 = document.getElementById('ui-layer2');
+                    
+                    startBtn.classList.add('show-ui');
+                    title.classList.add('show-ui');
+                    uiLayer2.classList.add('show-ui');
+                    
+                    console.log('✅ 圣诞树100%完整，UI元素已显示！');
+                    return;
+                }
+
+                requestAnimationFrame(waitForTreeComplete);
+            };
+
+            // 粒子创建完成后，启动等待检查
+            waitForTreeComplete();
+            animate();
+        }
+
         // ==========================================
         // 4. Three.js 核心设置
         // ==========================================
@@ -839,67 +849,67 @@ waitForTreeComplete();
             }
 
             update(dt, time, mode, focusTargetMesh) {
-    let target = this.posTree;
-    let s = this.baseScale;
-    // 核心：未启动场景时，用最快速度插值（lerpSpeed=10）
-    let lerpSpeed = window.isSceneStarted ? 3.0 : 15.0; 
+                let target = this.posTree;
+                let s = this.baseScale;
+                // 核心：未启动场景时，用最快速度插值（lerpSpeed=10）
+                let lerpSpeed = window.isSceneStarted ? 3.0 : 15.0; 
 
-    // 未启动场景时，强制树模式，忽略其他模式
-    if (!window.isSceneStarted) {
-        mode = 'TREE';
-    }
+                // 未启动场景时，强制树模式，忽略其他模式
+                if (!window.isSceneStarted) {
+                    mode = 'TREE';
+                }
 
-    // 原有模式逻辑保留（启动后生效）
-    if (mode === 'SCATTER') {
-        target = this.posScatter;
-    } 
-    else if (mode === 'FOCUS') {
-        if (this.mesh === focusTargetMesh) {
-            const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
-            const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
-            target = camPos.applyMatrix4(invMatrix);
-            lerpSpeed = 6.0;
-            this.mesh.lookAt(camera.position);
-            s = this.baseScale * 5.0;
-        } else {
-            target = this.posScatter;
-            s = 0.01;
+                // 原有模式逻辑保留（启动后生效）
+                if (mode === 'SCATTER') {
+                    target = this.posScatter;
+                } 
+                else if (mode === 'FOCUS') {
+                    if (this.mesh === focusTargetMesh) {
+                        const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
+                        const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
+                        target = camPos.applyMatrix4(invMatrix);
+                        lerpSpeed = 6.0;
+                        this.mesh.lookAt(camera.position);
+                        s = this.baseScale * 5.0;
+                    } else {
+                        target = this.posScatter;
+                        s = 0.01;
+                    }
+                } 
+                else if (mode === 'METEOR') {
+                    target = this.posScatter; 
+                    if (!this.isDust) s = 0;
+                }
+
+                // 未启动场景时，关闭噪声（避免粒子来回晃，卡住不动）
+                const dest = target.clone();
+                if(mode === 'TREE' && window.isSceneStarted) { 
+                    const noiseY = Math.sin(time * this.speed + this.offset) * 0.15;
+                    const noiseX = Math.cos(time * 0.5 * this.speed + this.offset) * 0.1;
+                    dest.y += noiseY; dest.x += noiseX; 
+                }
+
+                // 位置插值（未启动时速度×10，快速归位）
+                this.mesh.position.lerp(dest, lerpSpeed * dt);
+
+                // 闪烁效果（未启动时关闭，避免干扰）
+                if (this.hasEmissive && mode === 'TREE' && !this.isDust && window.isSceneStarted) {
+                    const blink = Math.sin(time * 2 + this.offset);
+                    this.mesh.material.emissiveIntensity = blink > 0.5 ? (1.0 + (blink - 0.5) * 4) : 0.3;
+                }
+
+                // 缩放处理（未启动时固定尺寸，不晃）
+                if (mode !== 'FOCUS') {
+                    if (this.isDust && window.isSceneStarted) {
+                        s = this.baseScale * (0.5 + 0.5 * Math.sin(time * 3 + this.offset));
+                    } else if (mode === 'SCATTER' && this.type === 'PHOTO') {
+                        s = this.baseScale * 2.5;
+                    }
+                }
+                
+                this.mesh.scale.lerp(new THREE.Vector3(s,s,s), window.isSceneStarted ? 5*dt : 10*dt);
+            }
         }
-    } 
-    else if (mode === 'METEOR') {
-        target = this.posScatter; 
-        if (!this.isDust) s = 0;
-    }
-
-    // 未启动场景时，关闭噪声（避免粒子来回晃，卡住不动）
-    const dest = target.clone();
-    if(mode === 'TREE' && window.isSceneStarted) { 
-        const noiseY = Math.sin(time * this.speed + this.offset) * 0.15;
-        const noiseX = Math.cos(time * 0.5 * this.speed + this.offset) * 0.1;
-        dest.y += noiseY; dest.x += noiseX; 
-    }
-
-    // 位置插值（未启动时速度×10，快速归位）
-    this.mesh.position.lerp(dest, lerpSpeed * dt);
-
-    // 闪烁效果（未启动时关闭，避免干扰）
-    if (this.hasEmissive && mode === 'TREE' && !this.isDust && window.isSceneStarted) {
-        const blink = Math.sin(time * 2 + this.offset);
-        this.mesh.material.emissiveIntensity = blink > 0.5 ? (1.0 + (blink - 0.5) * 4) : 0.3;
-    }
-
-    // 缩放处理（未启动时固定尺寸，不晃）
-    if (mode !== 'FOCUS') {
-         if (this.isDust && window.isSceneStarted) {
-            s = this.baseScale * (0.5 + 0.5 * Math.sin(time * 3 + this.offset));
-        } else if (mode === 'SCATTER' && this.type === 'PHOTO') {
-            s = this.baseScale * 2.5;
-        }
-    }
-    
-    this.mesh.scale.lerp(new THREE.Vector3(s,s,s), window.isSceneStarted ? 5*dt : 10*dt);
-}
-		}
 
         // 创建程序化纹理 (Candy Cane)
         function createTextures() {
@@ -953,59 +963,60 @@ waitForTreeComplete();
 
         // 创建主粒子系统
         function createParticles() {
-    // 返回Promise，让init()能等待粒子全部创建完成
-    return new Promise((resolve) => {
-        const sphereGeo = new THREE.SphereGeometry(0.5, 32, 32); 
-        const boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45); 
-        // 糖果形状
-        const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.5, 0), new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0.1, 0.5, 0), new THREE.Vector3(0.3, 0.4, 0)]);
-        const candyGeo = new THREE.TubeGeometry(curve, 16, 0.08, 8, false);
+            // 返回Promise，让init()能等待粒子全部创建完成
+            return new Promise((resolve) => {
+                const sphereGeo = new THREE.SphereGeometry(0.5, 32, 32); 
+                const boxGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45); 
+                // 糖果形状
+                const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.5, 0), new THREE.Vector3(0, 0.3, 0), new THREE.Vector3(0.1, 0.5, 0), new THREE.Vector3(0.3, 0.4, 0)]);
+                const candyGeo = new THREE.TubeGeometry(curve, 16, 0.08, 8, false);
 
-        // 材质库
-        const goldMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.15, envMapIntensity: 2.5, emissive: 0x664400, emissiveIntensity: 0.2 });
-        const greenMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.green, metalness: 0.4, roughness: 0.3, emissive: 0x001100, emissiveIntensity: 0.1 });
-        const redMat = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.red, metalness: 0.6, roughness: 0.2, clearcoat: 1.0, emissive: 0x330000, emissiveIntensity: 0.4 });
-        const candyMat = new THREE.MeshStandardMaterial({ map: caneTexture, roughness: 0.3, metalness: 0.1, emissive: 0x222222 });
-        
-        const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
-        const dustMat = new THREE.MeshBasicMaterial({ color: 0xffffee, blending: THREE.AdditiveBlending });
+                // 材质库
+                const goldMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, metalness: 1.0, roughness: 0.15, envMapIntensity: 2.5, emissive: 0x664400, emissiveIntensity: 0.2 });
+                const greenMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.green, metalness: 0.4, roughness: 0.3, emissive: 0x001100, emissiveIntensity: 0.1 });
+                const redMat = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.red, metalness: 0.6, roughness: 0.2, clearcoat: 1.0, emissive: 0x330000, emissiveIntensity: 0.4 });
+                const candyMat = new THREE.MeshStandardMaterial({ map: caneTexture, roughness: 0.3, metalness: 0.1, emissive: 0x222222 });
+                
+                const dustGeo = new THREE.OctahedronGeometry(0.1, 0);
+                const dustMat = new THREE.MeshBasicMaterial({ color: 0xffffee, blending: THREE.AdditiveBlending });
 
-        // 1. 生成主体装饰
-        for (let i = 0; i < CONFIG.particles.count; i++) {
-            const rand = Math.random(); 
-            let mesh, type;
-            if (rand < 0.35) { mesh = new THREE.Mesh(boxGeo, greenMat); type = 'BOX'; } 
-            else if (rand < 0.70) { mesh = new THREE.Mesh(boxGeo, goldMat); type = 'GOLD_BOX'; } 
-            else if (rand < 0.90) { mesh = new THREE.Mesh(sphereGeo, goldMat); type = 'GOLD_SPHERE'; } 
-            else if (rand < 0.96) { mesh = new THREE.Mesh(sphereGeo, redMat); type = 'RED'; } 
-            else { mesh = new THREE.Mesh(candyGeo, candyMat); type = 'CANE'; }
-            
-            const s = 0.4 + Math.random() * 0.4;
-            mesh.scale.set(s,s,s);
-            mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
-            mainGroup.add(mesh);
-            particleSystem.push(new Particle(mesh, type, false));
+                // 1. 生成主体装饰
+                for (let i = 0; i < CONFIG.particles.count; i++) {
+                    const rand = Math.random(); 
+                    let mesh, type;
+                    if (rand < 0.35) { mesh = new THREE.Mesh(boxGeo, greenMat); type = 'BOX'; } 
+                    else if (rand < 0.70) { mesh = new THREE.Mesh(boxGeo, goldMat); type = 'GOLD_BOX'; } 
+                    else if (rand < 0.90) { mesh = new THREE.Mesh(sphereGeo, goldMat); type = 'GOLD_SPHERE'; } 
+                    else if (rand < 0.96) { mesh = new THREE.Mesh(sphereGeo, redMat); type = 'RED'; } 
+                    else { mesh = new THREE.Mesh(candyGeo, candyMat); type = 'CANE'; }
+                    
+                    const s = 0.4 + Math.random() * 0.4;
+                    mesh.scale.set(s,s,s);
+                    mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+                    mainGroup.add(mesh);
+                    particleSystem.push(new Particle(mesh, type, false));
+                }
+
+                // 2. 生成星尘
+                for(let i=0; i<CONFIG.particles.dustCount; i++) {
+                    const mesh = new THREE.Mesh(dustGeo, dustMat);
+                    mesh.scale.setScalar(0.5 + Math.random());
+                    mainGroup.add(mesh);
+                    particleSystem.push(new Particle(mesh, 'DUST', true));
+                }
+
+                // 3. 树顶星星（确保星星也创建完成）
+                createStarTopper();
+
+                // ========== 关键：等待粒子数据上传GPU后，标记创建完成 ==========
+                // 200ms延迟：给Three.js时间把粒子几何体/材质上传到GPU（渲染前的关键步骤）
+                setTimeout(() => {
+                    console.log(`圣诞树粒子创建完成：主体装饰${CONFIG.particles.count}个 + 星尘${CONFIG.particles.dustCount}个 + 树顶星星`);
+                    resolve(true); // 告诉init()：粒子全部创建好了
+                }, 1000);
+            });
         }
 
-        // 2. 生成星尘
-        for(let i=0; i<CONFIG.particles.dustCount; i++) {
-            const mesh = new THREE.Mesh(dustGeo, dustMat);
-            mesh.scale.setScalar(0.5 + Math.random());
-            mainGroup.add(mesh);
-            particleSystem.push(new Particle(mesh, 'DUST', true));
-        }
-
-        // 3. 树顶星星（确保星星也创建完成）
-        createStarTopper();
-
-        // ========== 关键：等待粒子数据上传GPU后，标记创建完成 ==========
-        // 200ms延迟：给Three.js时间把粒子几何体/材质上传到GPU（渲染前的关键步骤）
-        setTimeout(() => {
-            console.log(`圣诞树粒子创建完成：主体装饰${CONFIG.particles.count}个 + 星尘${CONFIG.particles.dustCount}个 + 树顶星星`);
-            resolve(true); // 告诉init()：粒子全部创建好了
-        }, 1000);
-    });
-}
         function createStarTopper() {
             const starGeo = new THREE.OctahedronGeometry(1.5, 0);
             const starMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xffaa00, emissiveIntensity: 2.0, metalness: 1.0, roughness: 0 });
@@ -1025,85 +1036,82 @@ waitForTreeComplete();
         // ==========================================
         // 6. 照片上传与处理
         // ==========================================
-function addTipPhotoAsParticles(texture) {
-    // 1. 容错：纹理/纹理图片不存在则返回（和 addPhotoToScene 一致）
-    const img = texture.image;
-    if (!img || !texture) return;
+        function addTipPhotoAsParticles(texture) {
+            // 1. 容错：纹理/纹理图片不存在则返回（和 addPhotoToScene 一致）
+            const img = texture.image;
+            if (!img || !texture) return;
 
-    // 2. 粒子基础配置（可自定义）
-    const particleCount = 100;  // 每张图片生成100个粒子
-    const cylinderRadius = 0.3; // 圆柱半径
-    const cylinderHeight = 0.2; // 圆柱高度（短圆柱）
-    const scaleFactor = 6;      // 粒子缩放系数
+            // 2. 粒子基础配置（可自定义）
+            const particleCount = 100;  // 每张图片生成100个粒子
+            const cylinderRadius = 0.3; // 圆柱半径
+            const cylinderHeight = 0.2; // 圆柱高度（短圆柱）
+            const scaleFactor = 6;      // 粒子缩放系数
 
-    // 3. 循环生成粒子（核心逻辑）
-    for (let i = 0; i < particleCount; i++) {
-        // 3.1 创建短圆柱几何体（你的原配置）
-        const geometry = new THREE.CylinderGeometry(
-            cylinderRadius,  // 顶部半径
-            cylinderRadius,  // 底部半径
-            cylinderHeight,  // 高度
-            32               // 分段数（越高铁柱越圆）
-        );
+            // 3. 循环生成粒子（核心逻辑）
+            for (let i = 0; i < particleCount; i++) {
+                // 3.1 创建短圆柱几何体（你的原配置）
+                const geometry = new THREE.CylinderGeometry(
+                    cylinderRadius,  // 顶部半径
+                    cylinderRadius,  // 底部半径
+                    cylinderHeight,  // 高度
+                    32               // 分段数（越高铁柱越圆）
+                );
 
-        // 3.2 创建材质（模仿相框的金属质感 + 透明/纹理配置）
-        const material = new THREE.MeshStandardMaterial({
-            map: texture,               // 绑定皮头照片纹理
-            transparent: true,          // 开启透明（避免遮挡）
-            depthWrite: false,          // 解决透明渲染层级问题
-            metalness: 1.0,             // 模仿相框的高金属感（原0.9→1.0更贴近）
-            roughness: 0.1,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
-            emissiveIntensity: 0.2     // 微弱自发光
-        });
+                // 3.2 创建材质（模仿相框的金属质感 + 透明/纹理配置）
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,               // 绑定皮头照片纹理
+                    transparent: true,          // 开启透明（避免遮挡）
+                    depthWrite: false,          // 解决透明渲染层级问题
+                    metalness: 1.0,             // 模仿相框的高金属感（原0.9→1.0更贴近）
+                    roughness: 0.1,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
+                    emissiveIntensity: 0.2     // 微弱自发光
+                });
 
-        // 3.3 创建圆柱粒子网格
-        const particleMesh = new THREE.Mesh(geometry, material);
+                // 3.3 创建圆柱粒子网格
+                const particleMesh = new THREE.Mesh(geometry, material);
 
-        // 3.4 粒子位置（模仿照片的尺寸适配思路，限定位置范围，避免太分散）
-        // 皮头粒子专属区域：X轴 5~10，Y/Z轴 -5~5（和普通粒子区分）
-        particleMesh.position.set(
-            Math.random() * 5 + 5,    // X: 5~10
-            Math.random() * 10 - 5,   // Y: -5~5
-            Math.random() * 10 - 5    // Z: -5~5
-        );
+                // 3.4 粒子位置（模仿照片的尺寸适配思路，限定位置范围，避免太分散）
+                // 皮头粒子专属区域：X轴 5~10，Y/Z轴 -5~5（和普通粒子区分）
+                particleMesh.position.set(
+                    Math.random() * 5 + 5,    // X: 5~10
+                    Math.random() * 10 - 5,   // Y: -5~5
+                    Math.random() * 10 - 5    // Z: -5~5
+                );
 
-        // 3.5 粒子旋转（随机角度）
-        particleMesh.rotation.set(
-            Math.random() * Math.PI,
-            Math.random() * Math.PI,
-            Math.random() * Math.PI
-        );
+                // 3.5 粒子旋转（随机角度）
+                particleMesh.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
 
-        // 3.6 粒子缩放（模仿照片的尺寸限制，避免过大/过小）
-        particleMesh.scale.set(
-            Math.random() * scaleFactor + 1,
-            Math.random() * scaleFactor + 1,
-            Math.random() * scaleFactor + 1
-        );
+                // 3.6 粒子缩放（模仿照片的尺寸限制，避免过大/过小）
+                particleMesh.scale.set(
+                    Math.random() * scaleFactor + 1,
+                    Math.random() * scaleFactor + 1,
+                    Math.random() * scaleFactor + 1
+                );
 
-        // 3.7 透明度（固定1，也可随机）
-        material.opacity = 1;
+                // 3.7 透明度（固定1，也可随机）
+                material.opacity = 1;
 
-        // 4. 加入场景（和 addPhotoToScene 的 photoMeshGroup 逻辑一致）
-        // 建议创建专属的粒子组，方便管理（和照片组区分）
-        if (!window.tipParticleGroup) {
-            window.tipParticleGroup = new THREE.Group(); // 皮头粒子总容器
-            mainGroup.add(window.tipParticleGroup);      // 加入主场景
+                // 4. 加入场景（和 addPhotoToScene 的 photoMeshGroup 逻辑一致）
+                // 建议创建专属的粒子组，方便管理（和照片组区分）
+                if (!window.tipParticleGroup) {
+                    window.tipParticleGroup = new THREE.Group(); // 皮头粒子总容器
+                    mainGroup.add(window.tipParticleGroup);      // 加入主场景
+                }
+                window.tipParticleGroup.add(particleMesh);
+
+                // 5. 加入粒子系统（和 addPhotoToScene 一致）
+                if (typeof particleSystem !== 'undefined' && typeof Particle === 'function') {
+                    particleSystem.push(new Particle(particleMesh, 'TIP_PARTICLE', false));
+                }
+            }
+
+            // 日志：粒子生成成功
+            console.log(`皮头照片粒子生成完成！共生成 ${particleCount} 个短圆柱粒子`);
         }
-        window.tipParticleGroup.add(particleMesh);
-
-        // 5. 加入粒子系统（和 addPhotoToScene 一致）
-        if (typeof particleSystem !== 'undefined' && typeof Particle === 'function') {
-            particleSystem.push(new Particle(particleMesh, 'TIP_PARTICLE', false));
-        }
-    }
-
-    // 日志：粒子生成成功
-    console.log(`皮头照片粒子生成完成！共生成 ${particleCount} 个短圆柱粒子`);
-}
-	
-
-
 
         function addPhotoToScene(texture) {
             const img = texture.image;
@@ -1138,11 +1146,6 @@ function addTipPhotoAsParticles(texture) {
             // 将照片也作为一个粒子加入系统
             particleSystem.push(new Particle(group, 'PHOTO', false));
         }
-
-     
-
-
-
 
         // ==========================================
         // 7. MediaPipe 手势识别逻辑
@@ -1231,238 +1234,242 @@ function addTipPhotoAsParticles(texture) {
             requestAnimationFrame(predictWebcam);
         }
 
-        // 核心手势判断算法
-       // 核心手势判断算法（终极修复：Pinch循环切换照片）
-function processGestures(lm) {
-	 // 核心：未启动场景 或 摄像头未初始化 → 禁用手势
-    if (!window.isSceneStarted || !window.mediaPipeInited) return;
-    STATE.hand.detected = true;
+        // 核心手势判断算法（终极修复：Pinch循环切换照片）
+        function processGestures(lm) {
+            // 核心：未启动场景 或 摄像头未初始化 → 禁用手势
+            if (!window.isSceneStarted || !window.mediaPipeInited) return;
+            STATE.hand.detected = true;
 
-    // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
-    if (typeof window.photoIndex === 'undefined') {
-        window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
-    }
-
-    // 获取关键点坐标 (0:手腕, 4:拇指尖, 8:食指尖, 9:掌心, 12:中指尖, 16:无名指尖, 20:小指尖)
-    const wrist = lm[0];
-    const thumbTip = lm[4];
-    const indexTip = lm[8];
-    const middleTip = lm[12];
-    const ringTip = lm[16];
-    const pinkyTip = lm[20];
-    const palm = lm[9]; 
-
-    // ========== 2. Pinch手势判定（拇指+食指捏合） ==========
-    const pinchDistance = Math.hypot(
-        thumbTip.x - indexTip.x, 
-        thumbTip.y - indexTip.y,
-        thumbTip.z - indexTip.z
-    );
-    const pinchThreshold = 0.05;
-    const isPinching = pinchDistance < pinchThreshold;
-    
-    // 记录上一帧Pinch状态（全局变量，避免丢失）
-    if (typeof window.lastPinch === 'undefined') window.lastPinch = false;
-    const isJustPinched = !window.lastPinch && isPinching;
-
-    // ========== 3. 手掌张开程度判定（用于TREE/SCATTER模式） ==========
-    const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
-    const dMiddle = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
-    const dRing = Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y);
-    const dPinky = Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y);
-    const avgSpread = (dIndex + dMiddle + dRing + dPinky) / 4;
-    const isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
-
-    // ========== 4. 核心状态机逻辑 ==========
-    if (isPinching) {
-        // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
-        STATE.mode = 'FOCUS';
-        // 过滤有效照片（确保mesh存在）
-        const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
-        console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
-        console.log("当前全局索引：", window.photoIndex);
-
-        // 只在「刚捏合」的瞬间切换目标（防抖动）
-        if (isJustPinched && photos.length > 0) {
-            // 循环更新索引
-            window.photoIndex = (window.photoIndex + 1) % photos.length;
-            STATE.focusTarget = photos[window.photoIndex].mesh;
-            console.log("Pinch切换到：第", window.photoIndex, "张照片");
-        } else if (photos.length === 0) {
-            STATE.focusTarget = STATE.starMesh;
-            console.log("无照片，聚焦星星");
-        }
-
-        // 聚焦时停止手势旋转
-        STATE.hasPalmCenter = false;
-        STATE.spinVel.x *= 0.9;
-        STATE.spinVel.y *= 0.9;
-    } else {
-        // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
-        STATE.wasPointing = false; // 兼容原有指点手势的状态重置
-
-        if (isPalmOpen) {
-            // SCATTER模式：手掌张开 → 手动控制旋转
-            if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
-                STATE.palmCenter.x = palm.x;
-                STATE.palmCenter.y = palm.y;
-                STATE.hasPalmCenter = true;
+            // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
+            if (typeof window.photoIndex === 'undefined') {
+                window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
             }
-            STATE.mode = 'SCATTER';
-			
-            const dx = palm.x - STATE.palmCenter.x;
-            const dy = palm.y - STATE.palmCenter.y;
-            const gain = CONFIG.gestures.sensitivity;
-            const maxSpeed = 3.0;
 
-            const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
-            const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
+            // 获取关键点坐标 (0:手腕, 4:拇指尖, 8:食指尖, 9:掌心, 12:中指尖, 16:无名指尖, 20:小指尖)
+            const wrist = lm[0];
+            const thumbTip = lm[4];
+            const indexTip = lm[8];
+            const middleTip = lm[12];
+            const ringTip = lm[16];
+            const pinkyTip = lm[20];
+            const palm = lm[9]; 
 
-            // 平滑速度变化
-            STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
-            STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
-        } else {
-            // TREE模式：手掌放松 → 自动旋转
-            STATE.mode = 'TREE';
-            STATE.hasPalmCenter = false;
-            STATE.spinVel.x *= 0.9;
-            STATE.spinVel.y *= 0.9;
+            // ========== 2. Pinch手势判定（拇指+食指捏合） ==========
+            const pinchDistance = Math.hypot(
+                thumbTip.x - indexTip.x, 
+                thumbTip.y - indexTip.y,
+                thumbTip.z - indexTip.z
+            );
+            const pinchThreshold = 0.05;
+            const isPinching = pinchDistance < pinchThreshold;
+            
+            // 记录上一帧Pinch状态（全局变量，避免丢失）
+            if (typeof window.lastPinch === 'undefined') window.lastPinch = false;
+            const isJustPinched = !window.lastPinch && isPinching;
+
+            // ========== 3. 手掌张开程度判定（用于TREE/SCATTER模式） ==========
+            const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
+            const dMiddle = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+            const dRing = Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y);
+            const dPinky = Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y);
+            const avgSpread = (dIndex + dMiddle + dRing + dPinky) / 4;
+            const isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
+
+            // ========== 4. 核心状态机逻辑 ==========
+            if (isPinching) {
+                // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
+                STATE.mode = 'FOCUS';
+                // 过滤有效照片（确保mesh存在）
+                const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
+                console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
+                console.log("当前全局索引：", window.photoIndex);
+
+                // 只在「刚捏合」的瞬间切换目标（防抖动）
+                if (isJustPinched && photos.length > 0) {
+                    // 循环更新索引
+                    window.photoIndex = (window.photoIndex + 1) % photos.length;
+                    STATE.focusTarget = photos[window.photoIndex].mesh;
+                    console.log("Pinch切换到：第", window.photoIndex, "张照片");
+                } else if (photos.length === 0) {
+                    STATE.focusTarget = STATE.starMesh;
+                    console.log("无照片，聚焦星星");
+                }
+
+                // 聚焦时停止手势旋转
+                STATE.hasPalmCenter = false;
+                STATE.spinVel.x *= 0.9;
+                STATE.spinVel.y *= 0.9;
+            } else {
+                // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
+                STATE.wasPointing = false; // 兼容原有指点手势的状态重置
+
+                if (isPalmOpen) {
+                    // SCATTER模式：手掌张开 → 手动控制旋转
+                    if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
+                        STATE.palmCenter.x = palm.x;
+                        STATE.palmCenter.y = palm.y;
+                        STATE.hasPalmCenter = true;
+                    }
+                    STATE.mode = 'SCATTER';
+                    
+                    const dx = palm.x - STATE.palmCenter.x;
+                    const dy = palm.y - STATE.palmCenter.y;
+                    const gain = CONFIG.gestures.sensitivity;
+                    const maxSpeed = 3.0;
+
+                    const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
+                    const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
+
+                    // 平滑速度变化
+                    STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
+                    STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
+                } else {
+                    // TREE模式：手掌放松 → 自动旋转
+                    STATE.mode = 'TREE';
+                    STATE.hasPalmCenter = false;
+                    STATE.spinVel.x *= 0.9;
+                    STATE.spinVel.y *= 0.9;
+                }
+
+                // 更新手的位置（仅非FOCUS模式下）
+                const targetX = (palm.x - 0.5) * 3.0;
+                const targetY = (palm.y - 0.5) * 3.0;
+                STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
+                STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
+            }
+
+            // ========== 5. 保存上一帧Pinch状态（供下一帧判断） ==========
+            window.lastPinch = isPinching;
         }
-
-        // 更新手的位置（仅非FOCUS模式下）
-        const targetX = (palm.x - 0.5) * 3.0;
-        const targetY = (palm.y - 0.5) * 3.0;
-        STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
-        STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
-    }
-
-    // ========== 5. 保存上一帧Pinch状态（供下一帧判断） ==========
-    window.lastPinch = isPinching;
-}
 
         // ==========================================
         // 8. 动画循环 & DOM 事件
         // ==========================================
-       // 8. 动画循环 & DOM 事件
         function animate() {
-    requestAnimationFrame(animate);
+            requestAnimationFrame(animate);
 
-    const dt = clock.getDelta();
-    STATE.time = clock.elapsedTime;
-    const currentTimeMs = STATE.time * 1000; // 当前时间（毫秒）
+            const dt = clock.getDelta();
+            STATE.time = clock.elapsedTime;
+            const currentTimeMs = STATE.time * 1000; // 当前时间（毫秒）
 
-    // 核心：未启动场景 或 摄像头未初始化 → 禁用手势动画，但继续渲染
-    if (!window.isSceneStarted) {
-        // 检查粒子是否归位完成（仅在未启动场景时判断）
-        if (!ANIMATION_STATE.treeSettleComplete) {
-            checkTreeSettle(currentTimeMs); // 新增：检查归位
-        }
-        composer.render();
-        return;
-    }
+            // 核心：未启动场景 或 摄像头未初始化 → 禁用手势动画，但继续渲染
+            if (!window.isSceneStarted) {
+                // 检查粒子是否归位完成（仅在未启动场景时判断）
+                if (!ANIMATION_STATE.treeSettleComplete) {
+                    checkTreeSettle(currentTimeMs); // 新增：检查归位
+                }
+                composer.render();
+                return;
+            }
 
-    // 手势相关动画逻辑（原有代码不变）
-    let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
-    if (STATE.mode === 'TREE') {
-        STATE.rotation.y -= 0.4 * dt; 
-        STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
-        mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
-    } 
-    else if (STATE.mode === 'SCATTER') {
-        STATE.rotation.y += STATE.spinVel.y * dt;
-        STATE.rotation.x += STATE.spinVel.x * dt;
-        if (!STATE.hand.detected) {
-            STATE.spinVel.x *= 0.95;
-            STATE.spinVel.y *= 0.95;
-        }
-    }
+            // 手势相关动画逻辑（原有代码不变）
+            let inputX = STATE.hand.detected ? STATE.hand.x : STATE.mouse.x * 0.5;
+            if (STATE.mode === 'TREE') {
+                STATE.rotation.y -= 0.4 * dt; 
+                STATE.rotation.x = THREE.MathUtils.lerp(STATE.rotation.x, 0.15, dt * 2.0);
+                mainGroup.rotation.z = THREE.MathUtils.lerp(mainGroup.rotation.z, inputX * 0.1, dt * 2);
+            } 
+            else if (STATE.mode === 'SCATTER') {
+                STATE.rotation.y += STATE.spinVel.y * dt;
+                STATE.rotation.x += STATE.spinVel.x * dt;
+                if (!STATE.hand.detected) {
+                    STATE.spinVel.x *= 0.95;
+                    STATE.spinVel.y *= 0.95;
+                }
+            }
 
-    mainGroup.rotation.y = STATE.rotation.y;
-    mainGroup.rotation.x = STATE.rotation.x;
-    bgGroup.rotation.y -= 0.05 * dt;
+            mainGroup.rotation.y = STATE.rotation.y;
+            mainGroup.rotation.x = STATE.rotation.x;
+            bgGroup.rotation.y -= 0.05 * dt;
 
-    if (STATE.starMesh) {
-        STATE.starMesh.rotation.y -= dt;
-        STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
-        const scale = 1.0 + Math.sin(STATE.time * 2) * 0.1;
-        STATE.starMesh.scale.set(scale, scale, scale);
-    }
+            if (STATE.starMesh) {
+                STATE.starMesh.rotation.y -= dt;
+                STATE.starMesh.rotation.z = Math.sin(STATE.time) * 0.2;
+                const scale = 1.0 + Math.sin(STATE.time * 2) * 0.1;
+                STATE.starMesh.scale.set(scale, scale, scale);
+            }
 
-    for(let i=0, l=particleSystem.length; i<l; i++){
-        particleSystem[i].update(dt, STATE.time, STATE.mode, STATE.focusTarget);
-    }
+            for(let i=0, l=particleSystem.length; i<l; i++){
+                particleSystem[i].update(dt, STATE.time, STATE.mode, STATE.focusTarget);
+            }
 
-    composer.render();
-}
-
-// 新增：检查圣诞树粒子是否归位完成
-function checkTreeSettle(currentTimeMs) {
-    // 1. 超时兜底（延长到4秒，给粒子足够的动画时间）
-    if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
-        console.log('✅ 粒子归位超时，开始平滑归位动画');
-        // 启动平滑归位动画（而非瞬间瞬移）
-        startSmoothSettleAnimation();
-        ANIMATION_STATE.treeSettleComplete = true;
-        return;
-    }
-
-    // 2. 全量检查（判断是否需要归位）
-    let allInPlace = true;
-    let maxError = 0;
-    for (let i = 0; i < particleSystem.length; i++) {
-        const p = particleSystem[i];
-        if (p.type === 'DUST') continue;
-        
-        const error = p.mesh.position.distanceTo(p.posTree);
-        maxError = Math.max(maxError, error);
-        if (error > 0.05) {
-            allInPlace = false;
-            break;
-        }
-    }
-
-    // 3. 所有粒子接近归位 → 启动最终平滑对齐（避免微小晃动）
-    if (allInPlace) {
-        startSmoothSettleAnimation(0.2); // 快速平滑（0.2秒）
-        ANIMATION_STATE.treeSettleComplete = true;
-        console.log(`✅ 粒子接近归位，最大误差：${maxError.toFixed(4)}，开始最终平滑对齐`);
-    }
-}
-
-		// 平滑归位动画：粒子在指定时间内 lerp 到目标位置
-function startSmoothSettleAnimation(duration = 1) {
-    // 记录动画开始时间
-    const startTime = Date.now();
-    const animationDuration = duration * 1000; // 转毫秒
-
-    // 动画循环函数
-    function animateSettle() {
-        // 计算动画进度（0-1）
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / animationDuration, 1);
-
-        // 对每个非星尘粒子进行平滑插值
-        for (let i = 0; i < particleSystem.length; i++) {
-            const p = particleSystem[i];
-            if (p.type === 'DUST') continue;
-
-            // 线性插值到目标位置（progress=1时完全归位）
-            p.mesh.position.lerp(p.posTree, progress);
-            // 同时平滑恢复基础尺寸
-            p.mesh.scale.lerp(new THREE.Vector3(p.baseScale, p.baseScale, p.baseScale), progress);
+            composer.render();
         }
 
-        // 动画未完成则继续循环
-        if (progress < 1) {
+        // 新增：检查圣诞树粒子是否归位完成
+        function checkTreeSettle(currentTimeMs) {
+            // 初始化检查时间
+            if (ANIMATION_STATE.settleCheckTime === 0) {
+                ANIMATION_STATE.settleCheckTime = currentTimeMs;
+            }
+
+            // 1. 超时兜底（延长到4秒，给粒子足够的动画时间）
+            if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
+                console.log('✅ 粒子归位超时，开始平滑归位动画');
+                // 启动平滑归位动画（而非瞬间瞬移）
+                startSmoothSettleAnimation();
+                ANIMATION_STATE.treeSettleComplete = true;
+                return;
+            }
+
+            // 2. 全量检查（判断是否需要归位）
+            let allInPlace = true;
+            let maxError = 0;
+            for (let i = 0; i < particleSystem.length; i++) {
+                const p = particleSystem[i];
+                if (p.type === 'DUST') continue;
+                
+                const error = p.mesh.position.distanceTo(p.posTree);
+                maxError = Math.max(maxError, error);
+                if (error > 0.05) {
+                    allInPlace = false;
+                    break;
+                }
+            }
+
+            // 3. 所有粒子接近归位 → 启动最终平滑对齐（避免微小晃动）
+            if (allInPlace) {
+                startSmoothSettleAnimation(0.2); // 快速平滑（0.2秒）
+                ANIMATION_STATE.treeSettleComplete = true;
+                console.log(`✅ 粒子接近归位，最大误差：${maxError.toFixed(4)}，开始最终平滑对齐`);
+            }
+        }
+
+        // 平滑归位动画：粒子在指定时间内 lerp 到目标位置
+        function startSmoothSettleAnimation(duration = 1) {
+            // 记录动画开始时间
+            const startTime = Date.now();
+            const animationDuration = duration * 1000; // 转毫秒
+
+            // 动画循环函数
+            function animateSettle() {
+                // 计算动画进度（0-1）
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / animationDuration, 1);
+
+                // 对每个非星尘粒子进行平滑插值
+                for (let i = 0; i < particleSystem.length; i++) {
+                    const p = particleSystem[i];
+                    if (p.type === 'DUST') continue;
+
+                    // 线性插值到目标位置（progress=1时完全归位）
+                    p.mesh.position.lerp(p.posTree, progress);
+                    // 同时平滑恢复基础尺寸
+                    p.mesh.scale.lerp(new THREE.Vector3(p.baseScale, p.baseScale, p.baseScale), progress);
+                }
+
+                // 动画未完成则继续循环
+                if (progress < 1) {
+                    requestAnimationFrame(animateSettle);
+                } else {
+                    console.log('✅ 粒子平滑归位动画完成');
+                }
+            }
+
+            // 启动动画
             requestAnimationFrame(animateSettle);
-        } else {
-            console.log('✅ 粒子平滑归位动画完成');
         }
-    }
 
-    // 启动动画
-    requestAnimationFrame(animateSettle);
-}
         function setupEvents() {
             // 窗口调整
             window.addEventListener('resize', () => {
@@ -1471,10 +1478,6 @@ function startSmoothSettleAnimation(duration = 1) {
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 composer.setSize(window.innerWidth, window.innerHeight);
             });
-
-		
-
-            
 
         
             // UI 按钮: 全屏切换
