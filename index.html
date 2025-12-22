@@ -254,24 +254,6 @@
     <audio id="bg-music" autoplay loop >
     <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
 </audio>
-<!-- 播放按钮：默认显示，CSS 美化，确保能看到 -->
-<button id="music-play-btn" style="
-  position: fixed; 
-  top: 20px; 
-  right: 20px; 
-  z-index: 9999; /* 置顶，避免被其他元素遮挡 */
-  padding: 12px 24px; 
-  background: #ff6b6b; 
-  color: white; 
-  border: none; 
-  border-radius: 8px; 
-  font-size: 14px; 
-  cursor: pointer; 
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
-  display: block; /* 强制默认显示，关键！ */
-">
-  播放背景音乐
-</button>
 	
 
     <div class="download-btn-container" id="downloadContainer">
@@ -451,16 +433,16 @@ async function loadStoryPhotos() {
     setupLights();        // 设置灯光
     createTextures();     // 生成程序化纹理
     createGalaxyBackground(); // 创建背景星空
-    createParticles();    // 创建核心粒子系统
+    createParticles();    // 创建核心粒子系统（圣诞树核心）
     setupPostProcessing();// 设置辉光后期处理
     setupEvents();        // 绑定 DOM 事件
     
-    // ========== 新增：加载本地图片 ==========
+    // ========== 加载本地图片 ==========
     await loadTitleLogo();   // 加载标题Logo
     await loadTipPhotos();   // 加载皮头照片
     await loadStoryPhotos(); // 加载故事照片
 
-    // 初始化 AI 模型 (异步) - 注意：只初始化，不启用手势
+    // 初始化 AI 模型 (异步) - 只初始化，不启用手势
     initMediaPipe().catch(console.warn);
 
     // 移除 Loading 遮罩
@@ -468,22 +450,16 @@ async function loadStoryPhotos() {
     loader.style.opacity = 0;
     setTimeout(() => loader.remove(), 1200);
 
-    // ========== 关键修改：不直接启动 animate，只做初始化 ==========
-    // 1. 初始化全局启动状态（核心开关）
-    window.isSceneStarted = false; // 标记场景是否启动，全局可访问
-    
-    // 2. 渲染一次静态场景（让用户看到画面，但不执行动画）
-    composer.render(); 
-    
-    // 3. 后续 animate 会在 requestAnimationFrame 中运行，但被 isSceneStarted 控制
-    animate(); // 启动渲染循环，但此时 isSceneStarted=false，动画会被拦截
-    
-    // ========== 绑定启动按钮逻辑（确保按钮在加载完成后显示） ==========
+    // ========== 关键修改：全局启动状态 + 等待渲染完成再显示按钮 ==========
+    window.isSceneStarted = false; // 全局启动开关
     const startBtn = document.getElementById('start-btn');
     const bgMusic = document.getElementById('bg-music');
     const musicBtn = document.getElementById('music-play-btn');
 
-    // 音乐播放函数
+    // 先隐藏启动按钮，等场景渲染完成后再显示
+    startBtn.style.display = 'none';
+
+    // ========== 音乐播放函数 ==========
     const playMusic = () => {
         if (!bgMusic || !window.isSceneStarted) return;
         bgMusic.volume = 0.5;
@@ -499,20 +475,15 @@ async function loadStoryPhotos() {
             });
     };
 
-    // 启动按钮点击事件
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            // 1. 标记场景启动
-            window.isSceneStarted = true;
-            // 2. 隐藏启动按钮
-            startBtn.style.display = 'none';
-            // 3. 播放音乐
-            playMusic();
-            console.log('场景已启动，手势控制和音乐已开启');
-        });
-    }
+    // ========== 启动按钮点击逻辑 ==========
+    startBtn.addEventListener('click', () => {
+        window.isSceneStarted = true; // 解锁手势/动画
+        startBtn.style.display = 'none'; // 隐藏按钮
+        playMusic(); // 播放音乐
+        console.log('场景已启动，手势控制开启');
+    });
 
-    // 音乐兜底按钮逻辑
+    // ========== 音乐兜底按钮 ==========
     if (musicBtn) {
         musicBtn.addEventListener('click', () => {
             if (!window.isSceneStarted) {
@@ -522,6 +493,27 @@ async function loadStoryPhotos() {
             playMusic();
         });
     }
+
+    // ========== 核心：等待场景渲染完成后显示启动按钮 ==========
+    // 方法1：帧监听（推荐，可靠）- 等3帧渲染完成（确保圣诞树画完）
+    let renderCount = 0;
+    const checkRenderComplete = () => {
+        // 手动渲染一帧（确保圣诞树绘制）
+        composer.render();
+        renderCount++;
+        
+        // 渲染3帧后，确认场景完成，显示启动按钮
+        if (renderCount >= 3) {
+            startBtn.style.display = 'block'; // 显示按钮
+            cancelAnimationFrame(checkRenderId); // 停止监听
+            return;
+        }
+        checkRenderId = requestAnimationFrame(checkRenderComplete);
+    };
+    let checkRenderId = requestAnimationFrame(checkRenderComplete);
+
+    // 启动渲染循环（但被 isSceneStarted 拦截，只渲染不动画）
+    animate();
 }
         // ==========================================
         // 4. Three.js 核心设置
