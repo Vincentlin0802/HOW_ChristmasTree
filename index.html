@@ -41,7 +41,7 @@
     font-weight: bold;
     z-index: 1000; /* 让标题在最上层 */
     text-align: center;
-    animation: fadeIn 2s ease-in-out;
+    
     /* 新增：初始隐藏 */
     opacity: 0;
     pointer-events: none;
@@ -97,7 +97,7 @@
     pointer-events: none; /* Prevent interaction */
     /* 新增：初始隐藏 */
     opacity: 0;
-    transition: opacity 1s ease-in-out 0.5s; /* 延迟0.5秒显示，和标题错开 */
+    transition: opacity 1s ease-in-out; 
 }
 		/* 显示状态的样式 */
 #title.show, #ui-layer2.show {
@@ -108,11 +108,11 @@
     /* 启动按钮基础样式（核心修复：补充缺失的基础样式） */
     #start-btn {
         position: fixed !important;
-        bottom: 60px !important; /* 底部居中 */
+        bottom: 80px !important; /* 底部居中 */
         left: 50% !important;
         transform: translateX(-50%) !important;
         z-index: 99999 !important; /* 确保不被遮挡 */
-        padding: 22px 48px !important;
+        padding: 22px 45px !important;
         background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
         color: var(--gold-dark) !important; /* 深金色文字，对比更和谐 */
         border: 2px solid var(--gold-secondary) !important;
@@ -1300,34 +1300,44 @@ function processGestures(lm) {
     console.log("当前全局索引：", window.photoIndex);
 
     // 只在「刚捏合」的瞬间切换目标（防抖动）
-    if (isJustPinched && photos.length > 0) {
-        // ========== 核心修改：顺序 → 随机 ==========
-        // 方案1：纯随机（可能重复选到同一张）
-        const randomIndex = Math.floor(Math.random() * photos.length);
-        window.photoIndex = randomIndex; // 更新全局索引为随机值
-        
-        // 方案2：随机且不重复（可选，避免连续选同一张）
-        // if (photos.length > 1) {
-        //     let randomIndex;
-        //     // 循环直到选到和当前不同的索引
-        //     do {
-        //         randomIndex = Math.floor(Math.random() * photos.length);
-        //     } while (randomIndex === window.photoIndex);
-        //     window.photoIndex = randomIndex;
-        // }
-        
-        STATE.focusTarget = photos[window.photoIndex].mesh;
-        console.log("Pinch随机切换到：第", window.photoIndex, "张照片");
-    } else if (photos.length === 0) {
-        STATE.focusTarget = STATE.starMesh;
-        console.log("无照片，聚焦星星");
+if (isJustPinched && photos.length > 0) {
+    // 初始化历史索引数组（全局）
+    if (!window.photoHistory) {
+        window.photoHistory = [];
     }
+    
+    let randomIndex;
+    // 情况1：只有1张照片
+    if (photos.length === 1) {
+        randomIndex = 0;
+    } 
+    // 情况2：多张照片 → 排除最近2次选过的索引（增强随机性）
+    else {
+        do {
+            randomIndex = Math.floor(Math.random() * photos.length);
+            // 排除上一次 + 上上次选过的索引
+        } while (window.photoHistory.includes(randomIndex));
+    }
+    
+    // 更新全局索引和历史记录（只保留最近2次）
+    window.photoIndex = randomIndex;
+    window.photoHistory.push(randomIndex);
+    if (window.photoHistory.length > 2) {
+        window.photoHistory.shift(); // 只保留最近2条，避免数组过大
+    }
+    
+    STATE.focusTarget = photos[window.photoIndex].mesh;
+    console.log("Pinch随机切换到：第", window.photoIndex, "张照片（排除最近2次选过的）");
+} else if (photos.length === 0) {
+    STATE.focusTarget = STATE.starMesh;
+    console.log("无照片，聚焦星星");
+}
 
-    // 聚焦时停止手势旋转
-    STATE.hasPalmCenter = false;
-    STATE.spinVel.x *= 0.9;
-    STATE.spinVel.y *= 0.9;
-}else {
+// 聚焦时停止手势旋转
+STATE.hasPalmCenter = false;
+STATE.spinVel.x *= 0.9;
+STATE.spinVel.y *= 0.9;
+	}else {
         // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
         STATE.wasPointing = false; // 兼容原有指点手势的状态重置
 
