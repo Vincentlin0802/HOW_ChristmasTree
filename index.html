@@ -512,36 +512,35 @@ async function loadStoryPhotos() {
     // ========== 精准验证：粒子创建完成后，渲染3帧再显示按钮 ==========
     // 粒子创建完成后执行的渲染校验
 let renderCount = 0;
-const checkRenderComplete = () => {
-    composer.render();
-    renderCount++;
+    // 可选：在渲染验证前加一个固定延迟（比如800ms），给场景最终渲染缓冲
+    setTimeout(() => {
+        const checkRenderComplete = () => {
+            composer.render(); // 强制渲染一帧
+            renderCount++;
+            
+            // ========== 渲染帧数从3帧 → 8帧 ==========
+            // 帧数越多，越能确保粒子完全渲染（8帧仅需约80ms，无感知延迟）
+            if (renderCount >= 8) {
+                const startBtn = document.getElementById('start-btn');
+                if (!startBtn) {
+                    alert('启动按钮未找到！检查id是否为start-btn');
+                    return;
+                }
 
-    if (renderCount >= 10) {
-        const startBtn = document.getElementById('start-btn');
-        
-        // 兜底：如果按钮不存在，直接提示
-        if (!startBtn) {
-            alert('启动按钮未找到，请检查HTML中是否有id="start-btn"的按钮！');
-            return;
-        }
+                // 正确设置样式显示按钮
+                startBtn.style.setProperty('display', 'block', 'important');
+                startBtn.style.setProperty('pointer-events', 'auto', 'important');
+                startBtn.style.setProperty('z-index', '99999', 'important');
 
-        // 核心：用 setProperty 正确设置带 !important 的样式
-        startBtn.style.setProperty('display', 'block', 'important');
-        startBtn.style.setProperty('pointer-events', 'auto', 'important');
-        
-        // 额外确保按钮不被遮挡
-        startBtn.style.setProperty('position', 'fixed', 'important');
-        startBtn.style.setProperty('z-index', '99999', 'important');
-
-        cancelAnimationFrame(checkRenderId);
-        console.log('✅ 圣诞树渲染完成，启动按钮已显示！');
-        return;
-    }
-    checkRenderId = requestAnimationFrame(checkRenderComplete);
-};
-let checkRenderId = requestAnimationFrame(checkRenderComplete);
+                cancelAnimationFrame(checkRenderId);
+                console.log('✅ 圣诞树完全渲染完成（延长等待），启动按钮已显示！');
+                return;
+            }
+            checkRenderId = requestAnimationFrame(checkRenderComplete);
+        };
+        let checkRenderId = requestAnimationFrame(checkRenderComplete);
     }, 800); // 可选：额外加800ms固定延迟，确保场景完全稳定
-    // 启动渲染循环（静态圣诞树）
+
     animate();
 }
         // ==========================================
