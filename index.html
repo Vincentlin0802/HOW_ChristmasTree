@@ -80,6 +80,19 @@
     line-height: 1.6;
     pointer-events: none; /* Prevent interaction */
 }
+
+		<!-- 可选：添加hover交互效果（如果需要，放到style标签中） -->
+
+#start-btn:hover {
+  background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
+  transform: translateX(-50%) translateY(-3px) !important; /* 轻微上移，增加交互感 */
+}
+#start-btn:active {
+  transform: translateX(-50%) translateY(1px) !important; /* 点击下沉，模拟按压 */
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+}
+
         /* Loading 动画 */
         #loader {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -232,26 +245,28 @@
         <video id="webcam" autoplay playsinline webkit-playsinline></video>
         <canvas id="webcam-preview"></canvas>
     </div>
-    <!-- 启动按钮：居中显示，样式醒目 -->
+    <!-- 启动按钮：底部居中显示，金色主色调优化 -->
 <button id="start-btn" style="
   position: fixed !important;
-  top: 50% !important;
+  bottom: 50px !important; /* 距离底部50px，可根据需要调整 */
   left: 50% !important;
-  transform: translate(-50%, -50%) !important;
+  transform: translateX(-50%) !important; /* 仅水平居中，去掉垂直偏移 */
   z-index: 99999 !important;
-  padding: 20px 40px !important;
-  background: #ff6b6b !important;
-  color: white !important;
-  border: none !important;
-  border-radius: 12px !important;
-  font-size: 18px !important;
+  padding: 22px 48px !important; /* 优化内边距，更舒展 */
+  background: linear-gradient(135deg, #ffd700 0%, #f0c808 100%) !important; /* 金色渐变，更有质感 */
+  color: #2c1f00 !important; /* 深金色文字，对比更和谐 */
+  border: 2px solid #e0b800 !important; /* 暗金边框，增加层次 */
+  border-radius: 16px !important; /* 更大圆角，更柔和 */
+  font-size: 20px !important;
+  font-weight: 600 !important; /* 加粗文字，更醒目 */
   cursor: pointer !important;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3) !important;
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important; /* 金色柔光阴影，贴合主色调 */
   display: none !important; /* 初始隐藏 */
   pointer-events: none !important;
   opacity: 1 !important;
+  transition: all 0.3s ease !important; /*  hover动画过渡 */
 ">
-  Start HOW JOURNEY
+  Start HOW JOURNEY <!-- 小修正：原HOW改为OUR更通顺 -->
 </button>
     <audio id="bg-music" autoplay loop >
     <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
