@@ -428,35 +428,34 @@ async function loadStoryPhotos() {
         // 3. 初始化入口
         // ==========================================
         async function init() {
+    // 1. 初始化基础场景（不包含摄像头）
     initThree();          // 初始化 Three.js 场景
     setupEnvironment();   // 设置环境贴图
     setupLights();        // 设置灯光
     createTextures();     // 生成程序化纹理
     createGalaxyBackground(); // 创建背景星空
-    createParticles();    // 创建核心粒子系统（圣诞树核心）
+    createParticles();    // 创建核心粒子系统（圣诞树）
     setupPostProcessing();// 设置辉光后期处理
-    setupEvents();        // 绑定 DOM 事件
+    setupEvents();        // 绑定 DOM 事件（仅基础DOM，不含手势）
     
-    // ========== 加载本地图片 ==========
+    // 2. 加载所有图片资源
     await loadTitleLogo();   // 加载标题Logo
     await loadTipPhotos();   // 加载皮头照片
     await loadStoryPhotos(); // 加载故事照片
 
-    // 初始化 AI 模型 (异步) - 只初始化，不启用手势
-    initMediaPipe().catch(console.warn);
-
-    // 移除 Loading 遮罩
+    // 3. 移除 Loading 遮罩
     const loader = document.getElementById('loader');
     loader.style.opacity = 0;
     setTimeout(() => loader.remove(), 1200);
 
-    // ========== 关键修改：全局启动状态 + 等待渲染完成再显示按钮 ==========
-    window.isSceneStarted = false; // 全局启动开关
+    // ========== 全局状态初始化 ==========
+    window.isSceneStarted = false; // 场景是否启动
+    window.mediaPipeInited = false; // 摄像头是否初始化
     const startBtn = document.getElementById('start-btn');
     const bgMusic = document.getElementById('bg-music');
     const musicBtn = document.getElementById('music-play-btn');
 
-    // 先隐藏启动按钮，等场景渲染完成后再显示
+    // 初始隐藏启动按钮（等圣诞树渲染完成后显示）
     startBtn.style.display = 'none';
 
     // ========== 音乐播放函数 ==========
@@ -475,12 +474,31 @@ async function loadStoryPhotos() {
             });
     };
 
-    // ========== 启动按钮点击逻辑 ==========
-    startBtn.addEventListener('click', () => {
-        window.isSceneStarted = true; // 解锁手势/动画
-        startBtn.style.display = 'none'; // 隐藏按钮
-        playMusic(); // 播放音乐
-        console.log('场景已启动，手势控制开启');
+    // ========== 摄像头初始化函数（延后到点击按钮后） ==========
+    const initCameraAndGesture = async () => {
+        if (window.mediaPipeInited) return; // 避免重复初始化
+        try {
+            await initMediaPipe(); // 初始化MediaPipe（请求摄像头权限）
+            window.mediaPipeInited = true;
+            console.log('摄像头初始化成功，手势控制已开启');
+        } catch (e) {
+            console.warn('摄像头初始化失败：', e);
+            alert('请允许摄像头权限，否则无法使用手势控制！');
+        }
+    };
+
+    // ========== 启动按钮点击逻辑（核心：触发摄像头+解锁所有功能） ==========
+    startBtn.addEventListener('click', async () => {
+        // 1. 标记场景启动
+        window.isSceneStarted = true;
+        // 2. 隐藏启动按钮
+        startBtn.style.display = 'none';
+        // 3. 初始化摄像头（请求权限）
+        await initCameraAndGesture();
+        // 4. 播放音乐
+        playMusic();
+        // 5. 提示启动成功
+        console.log('场景已启动，摄像头权限已请求，手势控制可用');
     });
 
     // ========== 音乐兜底按钮 ==========
@@ -494,25 +512,24 @@ async function loadStoryPhotos() {
         });
     }
 
-    // ========== 核心：等待场景渲染完成后显示启动按钮 ==========
-    // 方法1：帧监听（推荐，可靠）- 等3帧渲染完成（确保圣诞树画完）
+    // ========== 等待圣诞树渲染完成后显示启动按钮 ==========
     let renderCount = 0;
     const checkRenderComplete = () => {
-        // 手动渲染一帧（确保圣诞树绘制）
+        // 手动渲染一帧，确保圣诞树绘制完成
         composer.render();
         renderCount++;
         
-        // 渲染3帧后，确认场景完成，显示启动按钮
+        // 渲染3帧后（确保圣诞树完全显示），显示启动按钮
         if (renderCount >= 3) {
             startBtn.style.display = 'block'; // 显示按钮
-            cancelAnimationFrame(checkRenderId); // 停止监听
+            cancelAnimationFrame(checkRenderId);
             return;
         }
         checkRenderId = requestAnimationFrame(checkRenderComplete);
     };
     let checkRenderId = requestAnimationFrame(checkRenderComplete);
 
-    // 启动渲染循环（但被 isSceneStarted 拦截，只渲染不动画）
+    // 启动渲染循环（但被 isSceneStarted 拦截，只渲染静态圣诞树）
     animate();
 }
         // ==========================================
@@ -1044,8 +1061,8 @@ function addTipPhotoAsParticles(texture) {
         // 核心手势判断算法
        // 核心手势判断算法（终极修复：Pinch循环切换照片）
 function processGestures(lm) {
-	 // 核心：未启动则直接返回，禁用手势
-    if (!window.isSceneStarted) return;
+	 // 核心：未启动场景 或 摄像头未初始化 → 禁用手势
+    if (!window.isSceneStarted || !window.mediaPipeInited) return;
     STATE.hand.detected = true;
 
     // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
