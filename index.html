@@ -539,7 +539,8 @@ const waitForTreeComplete = () => {
             startBtn.style.setProperty('pointer-events', 'auto', 'important');
             startBtn.style.setProperty('z-index', '99999', 'important');
         }
-        console.log('✅ 圣诞树完全就绪（粒子归位+渲染稳定），启动按钮已显示！');
+        console.log('✅ 圣诞树100%完整，启动按钮已显示！');
+        }, 500); // 0.5秒延迟，确保用户视觉上看到完整的树
         return;
     }
 
@@ -698,7 +699,7 @@ waitForTreeComplete();
     let target = this.posTree;
     let s = this.baseScale;
     // 核心：未启动场景时，用最快速度插值（lerpSpeed=10）
-    let lerpSpeed = window.isSceneStarted ? 3.0 : 10.0; 
+    let lerpSpeed = window.isSceneStarted ? 3.0 : 15.0; 
 
     // 未启动场景时，强制树模式，忽略其他模式
     if (!window.isSceneStarted) {
@@ -1253,28 +1254,47 @@ function processGestures(lm) {
 
 // 新增：检查圣诞树粒子是否归位完成
 function checkTreeSettle(currentTimeMs) {
-    // 超过最大等待时间（2秒），强制判定完成
+    // 1. 超时兜底（延长到4秒，给粒子足够时间）
     if (currentTimeMs - ANIMATION_STATE.settleCheckTime > ANIMATION_STATE.settleDelay) {
         ANIMATION_STATE.treeSettleComplete = true;
-        console.log('✅ 粒子归位超时，强制判定完成');
+        console.log('✅ 粒子归位超时，强制对齐+判定完成');
+        // 强制把所有非星尘粒子直接移到目标位置（视觉上瞬间完整）
+        for (let i = 0; i < particleSystem.length; i++) {
+            const p = particleSystem[i];
+            if (p.type === 'DUST') continue; // 星尘保留动态效果
+            p.mesh.position.copy(p.posTree); // 强制归位
+            p.mesh.scale.copy(new THREE.Vector3(p.baseScale, p.baseScale, p.baseScale)); // 强制恢复基础尺寸
+        }
         return;
     }
 
-    // 抽样检查前100个粒子的位置误差（避免遍历全部3300个，提升性能）
-    const sampleCount = Math.min(100, particleSystem.length);
-    let totalError = 0;
-    for (let i = 0; i < sampleCount; i++) {
+    // 2. 全量检查（不再抽样，确保100%粒子归位）
+    let allInPlace = true;
+    let maxError = 0; // 记录最大误差（找到“拖后腿”的粒子）
+    for (let i = 0; i < particleSystem.length; i++) {
         const p = particleSystem[i];
-        if (p.type === 'DUST') continue; // 星尘不检查
+        if (p.type === 'DUST') continue;
+        
         const error = p.mesh.position.distanceTo(p.posTree);
-        totalError += error;
+        maxError = Math.max(maxError, error); // 记录最大误差
+        
+        // 误差>0.05就判定未归位（严格但不极端）
+        if (error > 0.05) {
+            allInPlace = false;
+            break; // 只要有一个粒子没归位，直接判定未完成
+        }
     }
-    const avgError = totalError / sampleCount;
 
-    // 平均误差<阈值，判定归位完成
-    if (avgError < ANIMATION_STATE.settleThreshold) {
+    // 3. 所有粒子归位完成 → 强制对齐+标记完成
+    if (allInPlace) {
+        // 强制对齐所有粒子（确保视觉无偏差）
+        for (let i = 0; i < particleSystem.length; i++) {
+            const p = particleSystem[i];
+            if (p.type === 'DUST') continue;
+            p.mesh.position.copy(p.posTree);
+        }
         ANIMATION_STATE.treeSettleComplete = true;
-        console.log(`✅ 粒子归位完成，平均误差：${avgError.toFixed(4)}`);
+        console.log(`✅ 所有粒子归位完成，最大误差：${maxError.toFixed(4)}`);
     }
 }
         function setupEvents() {
