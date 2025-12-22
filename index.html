@@ -228,9 +228,14 @@
         <canvas id="webcam-preview"></canvas>
     </div>
     
-    <audio id="bg-music" autoplay loop muted>
+    <audio id="bg-music" autoplay loop >
     <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
 </audio>
+
+	<!-- 可选：播放按钮兜底（如果自动触发失败，用户可手动点） -->
+<button id="music-play-btn" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 8px 16px; display: none;">
+  播放背景音乐
+</button>
 
     <div class="download-btn-container" id="downloadContainer">
         <button class="download-btn" onclick="downloadHTML()">
@@ -1153,16 +1158,48 @@ function processGestures(lm) {
             }
 
             // 音乐播放 (交互触发)
-            let audioContextStarted = false;
-            const startMusic = () => {
-                const music = document.getElementById('bg-music');
-                if (music && !audioContextStarted) {
-                    music.volume = 0.5;
-                    music.play().then(() => audioContextStarted = true).catch(e=>console.log(e));
-                }
-            };
-            window.addEventListener('click', startMusic, { once: true });
-            window.addEventListener('touchstart', startMusic, { once: true });
+let musicPlayed = false; // 改更清晰的变量名，避免和AudioContext混淆
+const musicBtn = document.getElementById('music-play-btn'); // 兜底按钮
+
+const startMusic = () => {
+    const music = document.getElementById('bg-music');
+    
+    // 1. 校验音频标签是否存在
+    if (!music) {
+        console.error('音频标签不存在！请检查HTML里是否有id为bg-music的audio标签');
+        if (musicBtn) musicBtn.style.display = 'block'; // 显示兜底按钮
+        return;
+    }
+
+    // 2. 避免重复播放
+    if (musicPlayed) return;
+
+    // 3. 配置音频
+    music.volume = 0.5; // 音量50%
+    music.load(); // 强制重新加载（避免缓存问题）
+
+    // 4. 尝试播放
+    music.play()
+        .then(() => {
+            musicPlayed = true;
+            console.log('背景音乐播放成功！');
+            if (musicBtn) musicBtn.style.display = 'none'; // 隐藏兜底按钮
+        })
+        .catch(e => {
+            console.error('播放失败：', e);
+            // 播放失败时显示兜底按钮，让用户手动点
+            if (musicBtn) musicBtn.style.display = 'block';
+        });
+};
+
+// 监听首次点击/触摸（只触发一次）
+window.addEventListener('click', startMusic, { once: true });
+window.addEventListener('touchstart', startMusic, { once: true });
+
+// 兜底按钮的点击事件（用户手动触发）
+if (musicBtn) {
+    musicBtn.addEventListener('click', startMusic);
+}
 
             // 触摸滑动备用方案 (无摄像头时)
             let touchStartX = 0;
