@@ -563,35 +563,21 @@ async function loadStoryPhotos() {
                 if (mode === 'SCATTER') {
                     target = this.posScatter;
                 } 
-    // 聚焦模式：镜头飞到被选中的物体前，其他物体退后
-    else if (mode === 'FOCUS') {
-    // 聚焦模式：镜头飞到被选中的物体前，其他的退后
-    if (this.mesh === focusTargetMesh) {
-        // 获取当前物体的世界坐标
-        const targetWorldPos = this.mesh.getWorldPosition(new THREE.Vector3());
-
-        // 将世界坐标转换为摄像机视角下的局部坐标
-        const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
-        const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
-        target = camPos.applyMatrix4(invMatrix);
-        
-        // 设置一个平滑过渡的速度
-        lerpSpeed = 0.1;  // 可根据需要调整平滑速度，值越小越慢
-
-        // 计算摄像机目标位置
-        target = targetWorldPos;
-        // 使用线性插值来平滑地移动摄像机
-        camera.position.lerp(target, lerpSpeed);
-        
-        // 摄像机始终朝向选中的物体
-        camera.lookAt(this.mesh.position);
-    } else {
-        target = this.posScatter;
-        s = 0.01; // 其他粒子缩小
-    }
-}
-
-
+                else if (mode === 'FOCUS') {
+                    // 聚焦模式：被选中的物体飞到镜头前，其他的退后
+                    if (this.mesh === focusTargetMesh) {
+                        // 将世界坐标下的镜头前位置转换到 Group 局部坐标
+                        const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
+                        const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
+                        target = camPos.applyMatrix4(invMatrix);
+                        lerpSpeed = 6.0; // 聚焦时飞得快一点
+                        this.mesh.lookAt(camera.position);
+						s = this.baseScale * 5.0;
+                    } else {
+                        target = this.posScatter;
+                        s = 0.01; // 其他粒子缩小
+                    }
+                } 
                 else if (mode === 'METEOR') {
                     // 流星雨模式逻辑 (保留接口，目前手势未触发)
                     target = this.posScatter; 
@@ -955,116 +941,106 @@ function addTipPhotoAsParticles(texture) {
 function processGestures(lm) {
     STATE.hand.detected = true;
 
-    // ========== 初始化变量 ==========
-    if (typeof window.focusConfig === 'undefined') {
-        window.focusConfig = {
-            moveSpeed: 0.02,        // 相机飞向物体的速度
-            lockThreshold: 0.5,     // 到达物体前的停止阈值
-            backSpeed: 0.03,        // 回归速度
-            debug: true
-        };
-    }
-    if (typeof window.isCameraFlying === 'undefined') window.isCameraFlying = false;
-    if (typeof window.cameraHome === 'undefined') {
-        // 保存相机初始位置（回家用）
-        window.cameraHome = {
-            pos: camera.position.clone(),
-            rot: camera.rotation.clone(),
-            fov: camera.fov
-        };
+    // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
+    if (typeof window.photoIndex === 'undefined') {
+        window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
     }
 
-    // ========== 手势检测 ==========
+    // 获取关键点坐标 (0:手腕, 4:拇指尖, 8:食指尖, 9:掌心, 12:中指尖, 16:无名指尖, 20:小指尖)
     const wrist = lm[0];
     const thumbTip = lm[4];
     const indexTip = lm[8];
+    const middleTip = lm[12];
+    const ringTip = lm[16];
+    const pinkyTip = lm[20];
     const palm = lm[9]; 
 
-    // Pinch手势判定
+    // ========== 2. Pinch手势判定（拇指+食指捏合） ==========
     const pinchDistance = Math.hypot(
         thumbTip.x - indexTip.x, 
         thumbTip.y - indexTip.y,
         thumbTip.z - indexTip.z
     );
-    const isPinching = pinchDistance < 0.07;
+    const pinchThreshold = 0.05;
+    const isPinching = pinchDistance < pinchThreshold;
     
+    // 记录上一帧Pinch状态（全局变量，避免丢失）
     if (typeof window.lastPinch === 'undefined') window.lastPinch = false;
     const isJustPinched = !window.lastPinch && isPinching;
-    const isJustReleased = window.lastPinch && !isPinching;
 
-    // ========== Pinch捏合：相机飞向被选中物体 ==========
+    // ========== 3. 手掌张开程度判定（用于TREE/SCATTER模式） ==========
+    const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
+    const dMiddle = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+    const dRing = Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y);
+    const dPinky = Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y);
+    const avgSpread = (dIndex + dMiddle + dRing + dPinky) / 4;
+    const isPalmOpen = avgSpread > CONFIG.gestures.palmOpenThreshold;
+
+    // ========== 4. 核心状态机逻辑 ==========
     if (isPinching) {
-    // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
-    STATE.mode = 'FOCUS';
-    
-    // 过滤有效照片（确保mesh存在）
-    const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
-    console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
-    console.log("当前全局索引：", window.photoIndex);
+        // FOCUS模式：Pinch捏合 → 切换照片/聚焦星星
+        STATE.mode = 'FOCUS';
+        // 过滤有效照片（确保mesh存在）
+        const photos = particleSystem.filter(p => p.type === 'PHOTO' && p.mesh);
+        console.log("有效照片列表：", photos.map((p, i) => `第${i}张：${p.mesh.name || '未命名'}`));
+        console.log("当前全局索引：", window.photoIndex);
 
-    // 只在「刚捏合」的瞬间切换目标（防抖动）
-    if (isJustPinched && photos.length > 0) {
-        // 循环更新索引
-        window.photoIndex = (window.photoIndex + 1) % photos.length;
-        STATE.focusTarget = photos[window.photoIndex].mesh;
-        console.log("Pinch切换到：第", window.photoIndex, "张照片");
-    } else if (photos.length === 0) {
-        STATE.focusTarget = STATE.starMesh;
-        console.log("无照片，聚焦星星");
-    }
-
-    // 聚焦时停止手势旋转
-    STATE.hasPalmCenter = false;
-    STATE.spinVel.x *= 0.9;
-    STATE.spinVel.y *= 0.9;
-
-    // 计算摄像机平滑过渡到聚焦目标
-    if (STATE.focusTarget) {
-        const focusTargetPos = STATE.focusTarget.getWorldPosition(new THREE.Vector3());
-        camera.position.lerp(focusTargetPos, 0.1); // 使用lerp平滑过渡到目标位置
-        camera.lookAt(focusTargetPos); // 始终朝向聚焦目标
-    }
-} else {
-    // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
-    STATE.wasPointing = false; // 兼容原有指点手势的状态重置
-
-    if (isPalmOpen) {
-        // SCATTER模式：手掌张开 → 手动控制旋转
-        if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
-            STATE.palmCenter.x = palm.x;
-            STATE.palmCenter.y = palm.y;
-            STATE.hasPalmCenter = true;
+        // 只在「刚捏合」的瞬间切换目标（防抖动）
+        if (isJustPinched && photos.length > 0) {
+            // 循环更新索引
+            window.photoIndex = (window.photoIndex + 1) % photos.length;
+            STATE.focusTarget = photos[window.photoIndex].mesh;
+            console.log("Pinch切换到：第", window.photoIndex, "张照片");
+        } else if (photos.length === 0) {
+            STATE.focusTarget = STATE.starMesh;
+            console.log("无照片，聚焦星星");
         }
-        STATE.mode = 'SCATTER';
 
-        // 计算相对位移控制旋转速度
-        const dx = palm.x - STATE.palmCenter.x;
-        const dy = palm.y - STATE.palmCenter.y;
-        const gain = CONFIG.gestures.sensitivity;
-        const maxSpeed = 3.0;
-
-        const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
-        const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
-
-        // 平滑速度变化
-        STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
-        STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
-    } else {
-        // TREE模式：手掌放松 → 自动旋转
-        STATE.mode = 'TREE';
+        // 聚焦时停止手势旋转
         STATE.hasPalmCenter = false;
         STATE.spinVel.x *= 0.9;
         STATE.spinVel.y *= 0.9;
+    } else {
+        // TREE/SCATTER模式：非Pinch状态 → 手掌控制旋转
+        STATE.wasPointing = false; // 兼容原有指点手势的状态重置
+
+        if (isPalmOpen) {
+            // SCATTER模式：手掌张开 → 手动控制旋转
+            if (STATE.mode !== 'SCATTER' || !STATE.hasPalmCenter) {
+                STATE.palmCenter.x = palm.x;
+                STATE.palmCenter.y = palm.y;
+                STATE.hasPalmCenter = true;
+            }
+            STATE.mode = 'SCATTER';
+
+            // 计算相对位移控制旋转速度
+            const dx = palm.x - STATE.palmCenter.x;
+            const dy = palm.y - STATE.palmCenter.y;
+            const gain = CONFIG.gestures.sensitivity;
+            const maxSpeed = 3.0;
+
+            const targetVelY = THREE.MathUtils.clamp(dx * gain, -maxSpeed, maxSpeed);
+            const targetVelX = THREE.MathUtils.clamp(-dy * gain, -maxSpeed, maxSpeed);
+
+            // 平滑速度变化
+            STATE.spinVel.x += (targetVelX - STATE.spinVel.x) * 0.2;
+            STATE.spinVel.y += (targetVelY - STATE.spinVel.y) * 0.2;
+        } else {
+            // TREE模式：手掌放松 → 自动旋转
+            STATE.mode = 'TREE';
+            STATE.hasPalmCenter = false;
+            STATE.spinVel.x *= 0.9;
+            STATE.spinVel.y *= 0.9;
+        }
+
+        // 更新手的位置（仅非FOCUS模式下）
+        const targetX = (palm.x - 0.5) * 3.0;
+        const targetY = (palm.y - 0.5) * 3.0;
+        STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
+        STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
     }
 
-    // 更新手的位置（仅非FOCUS模式下）
-    const targetX = (palm.x - 0.5) * 3.0;
-    const targetY = (palm.y - 0.5) * 3.0;
-    STATE.hand.x += (targetX - STATE.hand.x) * 0.1;
-    STATE.hand.y += (targetY - STATE.hand.y) * 0.1;
-}
-
-
+    // ========== 5. 保存上一帧Pinch状态（供下一帧判断） ==========
     window.lastPinch = isPinching;
 }
 
