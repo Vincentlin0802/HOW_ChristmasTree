@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Grand Luxury Tree - 奢华交互版</title>
+    <title>HOW Christmas Tree Journey</title>
     
     <style>
         /* 引入衬线字体，营造高级感 */
@@ -309,7 +309,7 @@ const CONFIG = {
 const ANIMATION_STATE = {
     treeSettleComplete: false, // 圣诞树粒子是否归位完成
     settleCheckTime: 0,        // 开始检查归位的时间
-    settleThreshold: 0.01,     // 归位判定阈值（位置误差<0.01则完成）
+    settleThreshold: 0.1,     // 归位判定阈值（位置误差<0.01则完成）
     settleDelay: 2000          // 等待归位的最大时间（2秒）
 };
 	// ==========================================
@@ -694,66 +694,67 @@ waitForTreeComplete();
                 );
             }
 
-            // 每帧更新函数
             update(dt, time, mode, focusTargetMesh) {
-                let target = this.posTree;
-                let s = this.baseScale;
-                let lerpSpeed = 3.0;
-                
-                // 根据模式决定目标位置
-                if (mode === 'SCATTER') {
-                    target = this.posScatter;
-                } 
-                else if (mode === 'FOCUS') {
-                    // 聚焦模式：被选中的物体飞到镜头前，其他的退后
-                    if (this.mesh === focusTargetMesh) {
-                        // 将世界坐标下的镜头前位置转换到 Group 局部坐标
-                        const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
-                        const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
-                        target = camPos.applyMatrix4(invMatrix);
-                        lerpSpeed = 6.0; // 聚焦时飞得快一点
-                        this.mesh.lookAt(camera.position);
-						s = this.baseScale * 5.0;
-                    } else {
-                        target = this.posScatter;
-                        s = 0.01; // 其他粒子缩小
-                    }
-                } 
-                else if (mode === 'METEOR') {
-                    // 流星雨模式逻辑 (保留接口，目前手势未触发)
-                    target = this.posScatter; 
-                    if (!this.isDust) s = 0; // 隐藏非星尘物体
-                }
+    let target = this.posTree;
+    let s = this.baseScale;
+    // 核心：未启动场景时，用最快速度插值（lerpSpeed=10）
+    let lerpSpeed = window.isSceneStarted ? 3.0 : 10.0; 
 
-                // 计算带噪声的目标点 (增加呼吸感)
-                const dest = target.clone();
-                if(mode === 'TREE') { 
-                    const noiseY = Math.sin(time * this.speed + this.offset) * 0.15;
-                    const noiseX = Math.cos(time * 0.5 * this.speed + this.offset) * 0.1;
-                    dest.y += noiseY; dest.x += noiseX; 
-                }
+    // 未启动场景时，强制树模式，忽略其他模式
+    if (!window.isSceneStarted) {
+        mode = 'TREE';
+    }
 
-                // 位置平滑插值
-                this.mesh.position.lerp(dest, lerpSpeed * dt);
-
-                // 闪烁效果 (仅在树模式下的发光物体)
-                if (this.hasEmissive && mode === 'TREE' && !this.isDust) {
-                    const blink = Math.sin(time * 2 + this.offset);
-                    this.mesh.material.emissiveIntensity = blink > 0.5 ? (1.0 + (blink - 0.5) * 4) : 0.3;
-                }
-
-                // 缩放处理 (星尘忽大忽小，照片放大)
-                if (mode !== 'FOCUS') {
-                     if (this.isDust) {
-                        s = this.baseScale * (0.5 + 0.5 * Math.sin(time * 3 + this.offset));
-                    } else if (mode === 'SCATTER' && this.type === 'PHOTO') {
-                        s = this.baseScale * 2.5; // 散开时照片变大方便观看
-                    }
-                }
-                
-                this.mesh.scale.lerp(new THREE.Vector3(s,s,s), 5*dt);
-            }
+    // 原有模式逻辑保留（启动后生效）
+    if (mode === 'SCATTER') {
+        target = this.posScatter;
+    } 
+    else if (mode === 'FOCUS') {
+        if (this.mesh === focusTargetMesh) {
+            const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
+            const camPos = new THREE.Vector3(0, 0, CONFIG.camera.z - 15);
+            target = camPos.applyMatrix4(invMatrix);
+            lerpSpeed = 6.0;
+            this.mesh.lookAt(camera.position);
+            s = this.baseScale * 5.0;
+        } else {
+            target = this.posScatter;
+            s = 0.01;
         }
+    } 
+    else if (mode === 'METEOR') {
+        target = this.posScatter; 
+        if (!this.isDust) s = 0;
+    }
+
+    // 未启动场景时，关闭噪声（避免粒子来回晃，卡住不动）
+    const dest = target.clone();
+    if(mode === 'TREE' && window.isSceneStarted) { 
+        const noiseY = Math.sin(time * this.speed + this.offset) * 0.15;
+        const noiseX = Math.cos(time * 0.5 * this.speed + this.offset) * 0.1;
+        dest.y += noiseY; dest.x += noiseX; 
+    }
+
+    // 位置插值（未启动时速度×10，快速归位）
+    this.mesh.position.lerp(dest, lerpSpeed * dt);
+
+    // 闪烁效果（未启动时关闭，避免干扰）
+    if (this.hasEmissive && mode === 'TREE' && !this.isDust && window.isSceneStarted) {
+        const blink = Math.sin(time * 2 + this.offset);
+        this.mesh.material.emissiveIntensity = blink > 0.5 ? (1.0 + (blink - 0.5) * 4) : 0.3;
+    }
+
+    // 缩放处理（未启动时固定尺寸，不晃）
+    if (mode !== 'FOCUS') {
+         if (this.isDust && window.isSceneStarted) {
+            s = this.baseScale * (0.5 + 0.5 * Math.sin(time * 3 + this.offset));
+        } else if (mode === 'SCATTER' && this.type === 'PHOTO') {
+            s = this.baseScale * 2.5;
+        }
+    }
+    
+    this.mesh.scale.lerp(new THREE.Vector3(s,s,s), window.isSceneStarted ? 5*dt : 10*dt);
+}
 
         // 创建程序化纹理 (Candy Cane)
         function createTextures() {
