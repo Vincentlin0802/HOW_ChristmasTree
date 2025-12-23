@@ -27,20 +27,29 @@
     "026.jpg",
     "027.jpg",
     "028.jpg",
-    "029.jpg"
+    "029.jpg",
+    "030.jpg",
+    "031.jpg",
+    "032.jpg",
+    "033.jpg",
+    "034.jpg",
+    "035.jpg",
+    "036.jpg",
+    "037.jpg",
+    "038.jpg"
   ],
   "rewardImages": [
     {
       "name": "reward1.jpg",
-      "probability": 0.02
+      "probability": 0.005
     },
     {
       "name": "reward2.jpg",
-      "probability": 0.02
+      "probability": 0.005
     },
     {
       "name": "reward3.jpg",
-      "probability": 0.02
+      "probability": 0.005
     }
   ]
 }
