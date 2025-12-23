@@ -1176,7 +1176,13 @@ function addPhotoToScene(texture, type = 'NORMAL', probability = 1) {
   const frame = new THREE.Mesh(frameGeo, frameMat);
 
   const photoGeo = new THREE.PlaneGeometry(photoW, photoH);
-  const photoMat = new THREE.MeshBasicMaterial({ map: texture });
+  const photoMat = new THREE.MeshStandardMaterial({ // 替换MeshBasicMaterial
+    map: texture,
+    transparent: true,
+    side: THREE.DoubleSide,
+    emissive: 0xffffff,         // 新增：默认白色自发光
+    emissiveIntensity: 0.5      // 新增：默认弱发光
+  });
   const photo = new THREE.Mesh(photoGeo, photoMat);
   photo.position.z = 0.06;
 
@@ -1439,13 +1445,38 @@ STATE.spinVel.y *= 0.9;
     window.lastPinch = isPinching;
 }
 
-		// 普通照片特效（基础放大+弱发光）
+		/// 普通照片特效（基础放大+弱发光）
 function triggerNormalEffect(mesh) {
-  mesh.material.emissive.setHex(0xffffff);
-  mesh.material.emissiveIntensity = 0.5;
+  // 防御性校验：mesh不存在直接返回
+  if (!mesh) {
+    console.warn('普通特效触发失败：mesh为空');
+    return;
+  }
+
+  // 1. 遍历Group找到照片层（PlaneGeometry）的Mesh
+  mesh.traverse((child) => {
+    if (child.isMesh && child.geometry instanceof THREE.PlaneGeometry) {
+      // 2. 确保材质支持emissive（MeshBasicMaterial→MeshStandardMaterial）
+      if (!child.material.emissive) {
+        child.material = new THREE.MeshStandardMaterial({
+          map: child.material.map,    // 保留原有纹理
+          transparent: true,          // 保留透明属性
+          side: THREE.DoubleSide,     // 双面渲染
+          emissive: 0xffffff,         // 默认白色自发光
+          emissiveIntensity: 0.5      // 默认弱发光
+        });
+      }
+
+      // 3. 设置普通照片的弱发光（修复报错核心）
+      child.material.emissive.setHex(0xffffff);
+      child.material.emissiveIntensity = 0.5;
+    }
+  });
+
+  // 4. 普通照片放大（保留原有逻辑）
   mesh.scale.lerp(new THREE.Vector3(5, 5, 5), 0.1);
   
-  // 清除残留的奖励特效
+  // 5. 清除残留的奖励特效定时器（避免冲突）
   if (mesh.rewardPulseInterval) {
     clearInterval(mesh.rewardPulseInterval);
     mesh.rewardPulseInterval = null;
