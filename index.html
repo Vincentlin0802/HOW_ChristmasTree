@@ -678,7 +678,7 @@
     <div class="instruction">✊→<b>Fist</b> to SUMMON Tree</div>
     <div class="instruction">✋→<b>Open Hand</b> to SCATTER</div>
 	<div class="instruction">Move✋→<b>Move Palm</b> to Control ROTATION</div>
-    <div class="instruction">🤏→<b>Pinch</b> to CATCH Memory Photo</div>
+    <div class="instruction">🤏→<b>Pinch</b> to Grab your HOW Christmas Gift</div>
 </div>
 
     <div id="webcam-wrapper">
@@ -1851,7 +1851,7 @@ function triggerRewardEffect(mesh, probability) {
         // 只降低照片15单位内的光源（缩小范围，避免影响全局）
         const distance = obj.position.distanceTo(mesh.position);
         if (distance < 15) {
-          obj.intensity *= 0.9; // 强度降为40%（比之前更保守，减少反光）
+          obj.intensity *= 1.2; // 强度降为40%（比之前更保守，减少反光）
         }
       }
     });
@@ -1998,7 +1998,7 @@ function createRewardParticles(centerPos, isBig = false) {
 // 适配单种隐藏奖励：纯英文提示（无区分，统一酷炫效果）
 function showRewardTip(probability) {
   const tip = document.createElement('div');
-  const enText = '🎁 Congratulations! Hidden Reward Unlocked';
+  const enText = '🎁 Congratulations! You've grabbed HOW's Christmas gift;
   
   tip.style.cssText = `
     position: fixed; 
