@@ -1858,15 +1858,15 @@ function triggerRewardEffect(mesh, probability) {
   }
 
   // 1. 奖励照片缩放+脉冲动画（适度缩小，减少受光面积）
-  mesh.scale.set(5, 5, 5); // 初始尺寸更小，减少反光基础
-  gsap.to(mesh.scale, { x: 6, y: 6, z: 6, duration: 0.3, ease: 'power2.out' });
-  gsap.to(mesh.scale, { x: 5.5, y: 5.5, z: 5.5, duration: 0.2, delay: 0.3, ease: 'power2.in' });
+  mesh.scale.set(6, 6, 6); // 初始尺寸更小，减少反光基础
+  gsap.to(mesh.scale, { x: 7, y: 7, z: 7, duration: 0.3, ease: 'power2.out' });
+  gsap.to(mesh.scale, { x: 6.5, y: 6.5, z: 6.5, duration: 0.2, delay: 0.3, ease: 'power2.in' });
   
   // 循环脉冲（同步缩小，避免过度放大）
   if (mesh.rewardPulseInterval) clearInterval(mesh.rewardPulseInterval);
   mesh.rewardPulseInterval = setInterval(() => {
-    gsap.to(mesh.scale, { x: 6, y: 6, z: 6, duration: 0.2, ease: 'power1.out' });
-    gsap.to(mesh.scale, { x: 5.5, y: 5.5, z: 5.5, duration: 0.2, delay: 0.2, ease: 'power1.in' });
+    gsap.to(mesh.scale, { x: 7, y: 7, z: 7, duration: 0.2, ease: 'power1.out' });
+    gsap.to(mesh.scale, { x: 6.5, y: 6.5, z: 6.5, duration: 0.2, delay: 0.2, ease: 'power1.in' });
   }, 800);
   
   setTimeout(() => {
