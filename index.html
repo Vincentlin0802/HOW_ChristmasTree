@@ -854,22 +854,24 @@ async function loadStoryPhotos() {
     }
   }
 
-  // 加载奖励图片（新增详细日志）
-  if (config.rewardImages && config.rewardImages.length > 0) {
-    for (const rewardItem of config.rewardImages) {
-      try {
-        const { name: imgName, probability } = rewardItem;
-        const validProb = Math.max(0, Math.min(1, probability || 0.1));
-        const texture = await loadLocalTexture(folderPath, imgName);
-        addPhotoToScene(texture, 'REWARD', validProb); 
-        // 关键日志：打印奖励图片的索引+名称+类型
-        const rewardIndex = window.photos.length - 1;
-        console.log(`🎉 奖励照片${imgName}加载完成，索引：${rewardIndex}，类型：${window.photos[rewardIndex].type}`);
-      } catch (err) {
-        console.error(`❌ 加载奖励照片${rewardItem.name}失败：`, err);
-      }
+  // 加载奖励图片（新增文件路径日志）
+if (config.rewardImages && config.rewardImages.length > 0) {
+  console.log(`📌 待加载奖励图片数量：${config.rewardImages.length}`); // 先打印数量
+  for (const rewardItem of config.rewardImages) {
+    try {
+      const { name: imgName, probability } = rewardItem;
+      const fullPath = folderPath + imgName;
+      console.log(`🔍 尝试加载奖励图片：${fullPath}`); // 打印完整路径
+      const validProb = Math.max(0, Math.min(1, probability || 0.1));
+      const texture = await loadLocalTexture(folderPath, imgName);
+      addPhotoToScene(texture, 'REWARD', validProb); 
+      const rewardIndex = window.photos.length - 1;
+      console.log(`🎉 奖励照片${imgName}加载完成，索引：${rewardIndex}，类型：${window.photos[rewardIndex].type}`);
+    } catch (err) {
+      console.error(`❌ 加载奖励照片${rewardItem.name}失败：`, err);
     }
   }
+}
 
   // 最终校验：打印所有照片的索引+类型+名称
   console.log('📸 所有照片列表：');
