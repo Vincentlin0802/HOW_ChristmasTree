@@ -255,35 +255,47 @@
     align-items: center;
 }
 
-/* 奖励冻结层 - PC端 */
+/* 冻结提示文字 - 通用样式 */
+.freeze-tip {
+    color: #ffd700;
+    font-family: 'Cinzel', serif;
+    text-shadow: 0 0 10px #ffd700;
+}
+/* 继续按钮 hover/active 通用效果 */
+.freeze-btn:hover {
+    background: #f0c808;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px #ffd700;
+}
+/* ========== PC端样式（屏幕>768px） ========== */
 @media (min-width: 769px) {
     #rewardFreezeOverlay {
-        padding-bottom: 100px;
+        padding-bottom: 100px; /* PC端固定底部间距 */
     }
-    #rewardFreezeOverlay div {
+    .freeze-tip {
         font-size: 24px;
         margin-bottom: 30px;
     }
-    #continueBtn {
+    .freeze-btn {
         padding: 15px 40px;
         font-size: 20px;
         border-radius: 8px;
     }
 }
 
-/* 奖励冻结层 - 移动端 */
+/* ========== 移动端样式（屏幕≤768px） ========== */
 @media (max-width: 768px) {
     #rewardFreezeOverlay {
-        padding-bottom: 15vw;
+        padding-bottom: 15vw; /* 移动端相对间距 */
     }
-    #rewardFreezeOverlay div {
-        font-size: 5vw;
-        margin-bottom: 5vw;
+    .freeze-tip {
+        font-size: 5vw; /* 移动端相对字体 */
+        margin-bottom: 5vw; /* 移动端相对间距 */
     }
-    #continueBtn {
-        padding: 3vw 8vw;
-        font-size: 4vw;
-        border-radius: 2vw;
+    .freeze-btn {
+        padding: 3vw 8vw; /* 移动端相对内边距 */
+        font-size: 4vw; /* 移动端相对字体 */
+        border-radius: 2vw; /* 移动端大圆角 */
     }
 }
     /* Loading 动画 - 通用样式 */
