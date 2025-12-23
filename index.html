@@ -1499,74 +1499,209 @@ function triggerRewardEffect(mesh, probability) {
     return;
   }
 
-  // 1. 奖励照片缩放+脉冲动画（保留）
-  mesh.scale.set(7, 7, 7);
-  if (mesh.rewardPulseInterval) clearInterval(mesh.rewardPulseInterval);
+  // 1. 奖励照片缩放+脉冲动画（升级：更快节奏+回弹效果）
+  mesh.scale.set(6, 6, 6); // 先缩小，再放大，增加冲击感
+  gsap.to(mesh.scale, { x: 7.5, y: 7.5, z: 7.5, duration: 0.3, ease: 'power2.out' });
+  gsap.to(mesh.scale, { x: 7, y: 7, z: 7, duration: 0.2, delay: 0.3, ease: 'power2.in' });
   
+  // 循环脉冲（升级：更细腻的缩放节奏）
+  if (mesh.rewardPulseInterval) clearInterval(mesh.rewardPulseInterval);
   mesh.rewardPulseInterval = setInterval(() => {
-    mesh.scale.lerp(new THREE.Vector3(7.5, 7.5, 7.5), 0.05);
-    setTimeout(() => mesh.scale.lerp(new THREE.Vector3(7, 7, 7), 0.05), 300);
-  }, 600);
+    gsap.to(mesh.scale, { x: 7.5, y: 7.5, z: 7.5, duration: 0.2, ease: 'power1.out' });
+    gsap.to(mesh.scale, { x: 7, y: 7, z: 7, duration: 0.2, delay: 0.2, ease: 'power1.in' });
+  }, 800); // 缩短间隔，更灵动
   
   setTimeout(() => {
     if (mesh.rewardPulseInterval) {
       clearInterval(mesh.rewardPulseInterval);
       mesh.rewardPulseInterval = null;
+      // 结束后回弹到正常大小（更自然）
+      gsap.to(mesh.scale, { x: 5, y: 5, z: 5, duration: 0.5, ease: 'elastic.out(1, 0.3)' });
     }
-  }, 3000);
+  }, 4000); // 延长特效时长
 
-  // 2. 完全删除发光相关逻辑（核心：取消自发光）
+  // 2. 新增：照片相框发光（不影响图片本身，只让相框发光）
+  mesh.traverse((child) => {
+    if (child.isMesh && child.geometry instanceof THREE.BoxGeometry) { // 找到相框
+      child.material.emissive.setHex(0xffff00);
+      child.material.emissiveIntensity = 2.0;
+      // 相框呼吸发光
+      gsap.to(child.material, { 
+        emissiveIntensity: 0.5, 
+        duration: 2, 
+        repeat: -1, 
+        yoyo: true, 
+        ease: 'power1.inOut' 
+      });
+      // 4秒后停止发光
+      setTimeout(() => {
+        gsap.to(child.material, { emissiveIntensity: 0, duration: 1 });
+      }, 4000);
+    }
+  });
 
-  // 3. 金色星尘粒子特效（保留，如需移除可注释）
+  // 3. 金色星尘粒子特效（升级：更多粒子+多种形态+轨迹动画）
   if (typeof createRewardParticles === 'function') {
-    createRewardParticles(mesh.position);
+    // 多波粒子，增加层次感
+    createRewardParticles(mesh.position); // 第一波
+    setTimeout(() => createRewardParticles(mesh.position, true), 500); // 第二波（更大粒子）
   }
 
-  // 4. 屏幕UI提示（保留，如需移除可注释）
+  // 4. 屏幕UI提示（升级：动画入场+渐变+文字动效）
   if (typeof showRewardTip === 'function') {
     showRewardTip(probability);
   }
 
-  // 5. 音效（可选，如需移除可保持注释）
-  // if (typeof playRewardSound === 'function') {
-  //   playRewardSound();
-  // }
+  // 5. 新增：全屏闪光特效
+  createScreenFlash();
+
+  // 6. 音效（可选，建议添加，听觉+视觉双重冲击）
+  // playRewardSound();
 }
-// 奖励星尘粒子
-function createRewardParticles(centerPos) {
-  for (let i = 0; i < 80; i++) {
-    const geo = new THREE.SphereGeometry(0.15, 8, 8);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.9 });
+
+// 升级：奖励星尘粒子（多形态+多波次+轨迹）
+function createRewardParticles(centerPos, isBig = false) {
+  const particleCount = isBig ? 40 : 100; // 大粒子数量少，小粒子数量多
+  const size = isBig ? 0.3 : 0.15; // 大粒子尺寸更大
+  const range = isBig ? 18 : 12; // 大粒子扩散范围更广
+
+  for (let i = 0; i < particleCount; i++) {
+    const geo = new THREE.SphereGeometry(size, 12, 12); // 更高精度，更圆润
+    // 渐变金色，增加层次感
+    const goldColor = new THREE.Color(0xffff00);
+    goldColor.offsetHSL(0, 0, Math.random() * 0.3); // 随机亮度
+    const mat = new THREE.MeshBasicMaterial({ 
+      color: goldColor, 
+      transparent: true, 
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending // 叠加混合，更亮更通透
+    });
     const particle = new THREE.Mesh(geo, mat);
     
+    // 初始位置（球形扩散）
     particle.position.copy(centerPos);
-    particle.position.x += (Math.random() - 0.5) * 12;
-    particle.position.y += (Math.random() - 0.5) * 12;
-    particle.position.z += (Math.random() - 0.5) * 12;
+    particle.position.x += (Math.random() - 0.5) * range;
+    particle.position.y += (Math.random() - 0.5) * range;
+    particle.position.z += (Math.random() - 0.5) * range;
+
+    // 初始缩放动画（粒子出生时放大）
+    particle.scale.set(0, 0, 0);
+    gsap.to(particle.scale, { x: 1, y: 1, z: 1, duration: 0.3, ease: 'power2.out' });
     
     mainGroup.add(particle);
-    gsap.to(particle.position, { x: particle.position.x + (Math.random() - 0.5) * 8, duration: 2.5, ease: 'power2.out' });
-    gsap.to(particle.material, { opacity: 0, duration: 2.5, onComplete: () => mainGroup.remove(particle) });
+
+    // 轨迹动画（升级：曲线运动+随机方向）
+    const targetX = particle.position.x + (Math.random() - 0.5) * (isBig ? 15 : 8);
+    const targetY = particle.position.y + (Math.random() - 0.5) * (isBig ? 15 : 8);
+    const targetZ = particle.position.z + (Math.random() - 0.5) * (isBig ? 15 : 8);
+    gsap.to(particle.position, { 
+      x: targetX, 
+      y: targetY, 
+      z: targetZ, 
+      duration: isBig ? 3.5 : 2.5, 
+      ease: 'power2.out' 
+    });
+
+    // 透明度+缩放淡出（升级：先亮后暗，带闪烁）
+    gsap.to(particle.material, { 
+      opacity: 0, 
+      duration: isBig ? 3.5 : 2.5,
+      onUpdate: () => {
+        // 随机闪烁效果
+        if (Math.random() > 0.95) {
+          particle.material.opacity = Math.random() * 0.8 + 0.2;
+        }
+      },
+      onComplete: () => {
+        mainGroup.remove(particle);
+        particle.geometry.dispose(); // 释放内存
+        particle.material.dispose();
+      }
+    });
   }
 }
 
-// 奖励UI提示
+// 升级：奖励UI提示（动画入场+文字特效+背景光晕）
 function showRewardTip(probability) {
   const tip = document.createElement('div');
+  const text = probability <= 0.05 ? '🎉 稀有奖励！' : '🎁 恭喜解锁奖励！';
   tip.style.cssText = `
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    font-size: 32px; font-weight: bold; color: #ffd700;
-    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
-    z-index: 999999; pointer-events: none;
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%) scale(0);
+    font-size: ${probability <= 0.05 ? '48px' : '36px'}; 
+    font-weight: bold; 
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
+    z-index: 999999; 
+    pointer-events: none;
+    font-family: 'Cinzel', serif; /* 匹配你的衬线字体 */
+    background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 70%);
+    padding: 20px 40px;
+    border-radius: 10px;
   `;
-  tip.innerText = probability <= 0.05 ? '🎉 稀有奖励！' : '🎁 恭喜解锁奖励！';
+  tip.innerText = text;
   document.body.appendChild(tip);
   
+  // 入场动画：缩放+回弹
+  gsap.to(tip.style, { 
+    scale: 1.2, 
+    duration: 0.5, 
+    ease: 'power2.out',
+    onComplete: () => {
+      gsap.to(tip.style, { scale: 1, duration: 0.2, ease: 'power2.in' });
+    }
+  });
+  
+  // 闪烁动画
+  let flashInterval = setInterval(() => {
+    tip.style.opacity = Math.random() > 0.5 ? 1 : 0.8;
+  }, 200);
+  
+  // 退场动画
   setTimeout(() => {
-    tip.style.opacity = '0';
-    tip.style.transition = 'opacity 1s ease';
-    setTimeout(() => document.body.removeChild(tip), 1000);
-  }, 2000);
+    clearInterval(flashInterval);
+    gsap.to(tip.style, { 
+      opacity: 0, 
+      scale: 0.8,
+      duration: 1.2, 
+      ease: 'power2.inOut',
+      onComplete: () => document.body.removeChild(tip)
+    });
+  }, 3000); // 延长显示时间
+}
+
+// 新增：全屏闪光特效
+function createScreenFlash() {
+  const flash = document.createElement('div');
+  flash.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255,255,255,0.8);
+    z-index: 999998;
+    pointer-events: none;
+    opacity: 0;
+  `;
+  document.body.appendChild(flash);
+  
+  // 闪光动画（快速闪一下）
+  gsap.to(flash.style, { 
+    opacity: 1, 
+    duration: 0.1, 
+    ease: 'power1.out',
+    onComplete: () => {
+      gsap.to(flash.style, { 
+        opacity: 0, 
+        duration: 0.5, 
+        ease: 'power1.in',
+        onComplete: () => document.body.removeChild(flash)
+      });
+    }
+  });
 }
 
 // 可选：奖励音效
