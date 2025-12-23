@@ -2,354 +2,392 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>HOW Christmas Tree Journey</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <title>HOW Christmas Tree Journey </title>
+
     <style>
-    /* 引入衬线字体，营造高级感 */
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
+        /* 引入衬线字体，营造高级感 */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
 
-    /* 全局变量：统一金色和字体 */
-    :root {
-        --gold-primary: #ffd700;
-        --gold-secondary: #f0c808;
-        --gold-dark: #2c1f00;
-        --font-main: 'Cinzel', serif;
-    }
+        /* 全局变量：统一金色和字体 */
+        :root {
+            --gold-primary: #ffd700;
+            --gold-secondary: #f0c808;
+            --gold-dark: #2c1f00;
+            --font-main: 'Cinzel', serif;
+        }
 
-    /* 全局基础设置 */
-    body { 
-        margin: 0; 
-        overflow: hidden; 
-        background-color: #020205; 
-        font-family: var(--font-main); 
-        touch-action: none; /* 禁止默认触摸行为 */
-        -webkit-user-select: none; 
-        user-select: none; 
-    }
+        /* 全局基础设置 - 移动端优化 */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #020205; 
+            font-family: var(--font-main); 
+            touch-action: manipulation; /* 优化移动端触摸，禁用双击缩放 */
+            -webkit-user-select: none; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+            width: 100vw;
+            height: 100vh;
+        }
 
-    #title {
-    position: absolute;
-    top: 15px; /* 距离顶部的距离 */
-    left: 50%;
-    transform: translateX(-50%); /* 居中对齐 */
-    font-family: var(--font-main);
-    font-size: 30px;
-    color: var(--gold-primary); /* 金色 */
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary); /* 金光效果 */
-    letter-spacing: 2px;
-    font-weight: bold;
-    z-index: 1000; /* 让标题在最上层 */
-    text-align: center;
-    
-    /* 新增：初始隐藏 */
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 1s ease-in-out;
-}
+        /* 标题 - 移动端适配 */
+        #title {
+            position: absolute;
+            top: 2vw; /* 相对单位，适配不同手机 */
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: var(--font-main);
+            font-size: 5vw; /* 移动端相对字体 */
+            color: var(--gold-primary);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary);
+            letter-spacing: 0.5vw; /* 相对字间距 */
+            font-weight: bold;
+            z-index: 1000;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease-in-out;
+        }
 
-    .title-logo {
-        width: 130px; /* 默认宽度 */
-        height: auto; /* 保持比例 */
-        border-radius: 4px;
-        object-fit: contain;
-        transition: all 0.3s ease; /* 尺寸变化时平滑过渡 */
-    }
-
-    /* 全屏时放大 Logo */
-    :fullscreen .title-logo {
-        width: 90px; /* 全屏宽度 */
-    }
-
-    /* 小屏幕适配（手机端） */
-    @media (max-width: 768px) {
         .title-logo {
-            width: 50px; /* 手机端缩小 */
+            width: 20vw; /* 移动端相对宽度 */
+            height: auto;
+            border-radius: 4px;
+            object-fit: contain;
+            transition: all 0.3s ease;
         }
-    }
 
-    /* WebGL 容器 */
-    #canvas-container { 
-        width: 100vw; height: 100vh; 
-        position: absolute; top: 0; left: 0; 
-        z-index: 1; 
-    }
-    
-    /* UI 交互层 (允许点击穿透) */
-    #ui-layer {
-        position: absolute; top: 0; left: 0; 
-        width: 100%; height: 100%;
-        z-index: 10; 
-        pointer-events: none; 
-        background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
-    }
+        /* 全屏时Logo适配 */
+        :fullscreen .title-logo {
+            width: 15vw;
+        }
 
-    /* 操作说明初始隐藏，添加过渡动画 */
-#ui-layer2 {
-    position: absolute;
-    bottom: 20px; /* Move to the bottom */
-    left: 20px; /* Keep it at the left side */
-    z-index: 1000;
-    font-family: var(--font-main);
-    color: var(--gold-primary);
-    font-size: 16px;
-    line-height: 1.6;
-    pointer-events: none; /* Prevent interaction */
-    /* 新增：初始隐藏 */
-    opacity: 0;
-    transition: opacity 1s ease-in-out; 
-}
-		/* 显示状态的样式 */
-#title.show, #ui-layer2.show {
-    opacity: 1;
-    pointer-events: auto;
-}
+        /* WebGL 容器 - 移动端全屏 */
+        #canvas-container { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+        
+        /* UI 交互层 - 移动端优化 */
+        #ui-layer {
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            z-index: 10; 
+            pointer-events: none; 
+            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
+        }
 
-    
-    /* 启动按钮基础样式（核心修复：hover 失效问题） */
-/* 启动按钮基础样式（临时恢复可见性） */
-/* 普通状态 */
-#start-btn {
-    position: fixed;
-    bottom: 50px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 99999;
-    padding: 22px 45px;
-    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%);
-    color: var(--gold-dark);
-    border: 2px solid var(--gold-secondary);
-    border-radius: 16px;
-    font-size: 20px;
-    font-weight: 600;
-    font-family: var(--font-main);
-    cursor: pointer;
-    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: all 0.3s ease;
-}
+        /* 操作说明 - 移动端适配 */
+        #ui-layer2 {
+            position: absolute;
+            bottom: 3vw; /* 相对底部间距 */
+            left: 3vw; /* 相对左侧间距 */
+            z-index: 1000;
+            font-family: var(--font-main);
+            color: var(--gold-primary);
+            font-size: 3.5vw; /* 移动端相对字体 */
+            line-height: 1.6;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease-in-out; 
+            max-width: 80%; /* 防止文字溢出 */
+        }
 
-/* hover 状态 */
-#start-btn:hover {
-    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
-    transform: translateX(-50%) translateY(-3px);
-}
+        /* 显示状态 */
+        #title.show, #ui-layer2.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
 
-/* 按下状态 */
-#start-btn:active {
-    transform: translateX(-50%) translateY(1px) scale(0.95);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-    /* 启动按钮移动端适配 */
-    @media (max-width: 768px) {
+        /* 启动按钮 - 移动端核心适配 */
         #start-btn {
-            padding: 16px 32px !important;
-            font-size: 16px !important;
-            bottom: 30px !important;
+            position: fixed;
+            bottom: 8vw; /* 移动端底部间距 */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99999;
+            padding: 4vw 8vw; /* 相对内边距 */
+            background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%);
+            color: var(--gold-dark);
+            border: 2px solid var(--gold-secondary);
+            border-radius: 4vw; /* 大圆角，适配移动端 */
+            font-size: 4vw; /* 相对字体 */
+            font-weight: 600;
+            font-family: var(--font-main);
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: all 0.3s ease;
         }
-    }
-#continueBtn:hover {
-  background: #f0c808;
-  transform: scale(1.05);
-  box-shadow: 0 0 20px #ffd700;
-}
-    /* Loading 动画：带文字提示 + 金色优化版 */
-    #loader {
-        position: absolute; 
-        top: 0; 
-        left: 0; 
-        width: 100%; 
-        height: 100%;
-        background: #000; /* 黑色背景突出金色元素 */
-        z-index: 100;
-        display: flex; 
-        flex-direction: column; /* 改为列布局，容纳加载圈+文字 */
-        align-items: center; 
-        justify-content: center;
-        gap: 24px; /* 加载圈和文字的间距 */
-        transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-        opacity: 1;
-    }
 
-    #loader.hidden {
-        opacity: 0;
-        pointer-events: none;
-        transform: scale(0.95);
-    }
+        #start-btn:hover, #start-btn:active {
+            background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+            transform: translateX(-50%) translateY(-1vw);
+        }
 
-    .spinner {
-        width: 60px;
-        height: 60px; 
-        border: 3px solid rgba(255, 215, 0, 0.2);
-        border-top: 3px solid var(--gold-primary);
-        border-radius: 50%; 
-        animation: spin 1.2s ease-in-out infinite;
-        position: relative;
-    }
+        #start-btn:active {
+            transform: translateX(-50%) translateY(0.5vw) scale(0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
 
-    .spinner::after {
-        content: '';
-        position: absolute;
-        top: 5px;
-        left: 5px;
-        right: 5px;
-        bottom: 5px;
-        border: 2px solid rgba(255, 215, 0, 0.15);
-        border-top: 2px solid var(--gold-secondary);
-        border-radius: 50%;
-        animation: spin 0.8s ease-in-out reverse infinite;
-    }
+        /* 继续按钮 - 移动端适配 */
+        #continueBtn {
+            padding: 3vw 8vw !important; /* 相对内边距 */
+            font-size: 4vw !important; /* 相对字体 */
+            border-radius: 2vw !important; /* 大圆角 */
+        }
 
-    /* 加载提示文字样式 */
-    .loader-text {
-        color: var(--gold-primary); /* 金色文字，匹配主色调 */
-        font-size: 16px;
-        font-weight: 400;
-        letter-spacing: 0.5px; /* 轻微字间距，更易读 */
-        text-align: center;
-        line-height: 1.5;
-        max-width: 80%; /* 适配小屏幕，避免文字溢出 */
-        opacity: 0.9; /* 轻微透明，不抢加载圈焦点 */
-        font-family: var(--font-main);
-    }
+        #continueBtn:hover, #continueBtn:active {
+            background: #f0c808 !important;
+            transform: scale(1.05) !important;
+            box-shadow: 0 0 20px #ffd700 !important;
+        }
 
-    @keyframes spin { 
-        0% { transform: rotate(0deg); } 
-        100% { transform: rotate(360deg); } 
-    }
+        /* Loading 动画 - 移动端优化 */
+        #loader {
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background: #000;
+            z-index: 100;
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center;
+            gap: 5vw; /* 相对间距 */
+            transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+            opacity: 1;
+        }
 
-    /* 右上角控制按钮组 */
-    #top-right-controls {
-        position: absolute; top: 20px; right: 20px;
-        z-index: 30; 
-        display: flex; 
-        flex-direction: column; /* 纵向排列 */
-        gap: 15px; /* 按钮间距 */
-        pointer-events: auto;
-    }
+        #loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
 
-    /* 按钮样式  */
-    .control-btn {
-        background: rgba(10, 10, 10, 0.6);
-        border: 1px solid rgba(255, 215, 0, 0.4);
-        color: var(--gold-primary); 
+        .spinner {
+            width: 15vw; /* 移动端相对大小 */
+            height: 15vw; 
+            border: 3px solid rgba(255, 215, 0, 0.2);
+            border-top: 3px solid var(--gold-primary);
+            border-radius: 50%; 
+            animation: spin 1.2s ease-in-out infinite;
+            position: relative;
+        }
+
+        .spinner::after {
+            content: '';
+            position: absolute;
+            top: 1vw;
+            left: 1vw;
+            right: 1vw;
+            bottom: 1vw;
+            border: 2px solid rgba(255, 215, 0, 0.15);
+            border-top: 2px solid var(--gold-secondary);
+            border-radius: 50%;
+            animation: spin 0.8s ease-in-out reverse infinite;
+        }
+
+        /* 加载提示文字 - 移动端适配 */
+        .loader-text {
+            color: var(--gold-primary);
+            font-size: 3.5vw; /* 相对字体 */
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            text-align: center;
+            line-height: 1.5;
+            max-width: 80%;
+            opacity: 0.9;
+            font-family: var(--font-main);
+        }
+
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+
+        /* 右上角控制按钮 - 移动端适配 */
+        #top-right-controls {
+            position: absolute; 
+            top: 3vw; 
+            right: 3vw;
+            z-index: 30; 
+            display: flex; 
+            flex-direction: column;
+            gap: 2vw; /* 相对间距 */
+            pointer-events: auto;
+        }
+
+        .control-btn {
+            background: rgba(10, 10, 10, 0.6);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: var(--gold-primary); 
+            width: 25vw; /* 移动端相对宽度 */
+            height: auto;
+            padding: 2vw 0; /* 相对内边距 */
+            border-radius: 2vw; /* 大圆角 */
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-family: var(--font-main);
+            font-size: 3.5vw; /* 相对字体 */
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+            outline: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .control-btn:hover, .control-btn:active {
+            background: rgba(255, 215, 0, 0.2);
+            border-color: rgba(255, 215, 0, 0.8);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: scale(1.05); 
+            color: #fff;
+        }
+
+        .control-btn:active { 
+            transform: scale(0.95); 
+        }
+
+        /* 隐藏的文件输入框 */
+        #file-input { display: none; }
         
-        /* 取消圆形宽高，改为自适应或固定宽度 */
-        width: 100px; 
-        height: auto;
-        padding: 10px 0; /* 上下留白 */
+        /* 摄像头预览窗 - 移动端适配 */
+        #webcam-wrapper {
+            position: absolute; 
+            bottom: 3vw; 
+            right: 3vw; 
+            width: 25vw; /* 移动端小窗 */
+            height: 35vw; /* 移动端小窗 */
+            opacity: 0; 
+            pointer-events: none;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            border-radius: 2vw; /* 大圆角 */
+            background: #000; 
+            z-index: 50;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: scale(0.95);
+        }
+
+        #webcam-wrapper.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        #webcam { display: none; }
         
-        border-radius: 12px; /* 圆角矩形 */
-        
-        display: flex; align-items: center; justify-content: center;
-        font-family: var(--font-main); /* 保持字体风格 */
-        font-size: 14px; 
-        font-weight: 600;
-        letter-spacing: 1px;
-        cursor: pointer;
-        backdrop-filter: blur(5px);
-        transition: all 0.3s ease;
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
-        outline: none; -webkit-tap-highlight-color: transparent;
-    }
+        #webcam-preview {
+            display: block;
+            width: 100%; 
+            height: 100%; 
+            transform: scaleX(-1);
+        }
 
-    .control-btn:hover {
-        background: rgba(255, 215, 0, 0.2);
-        border-color: rgba(255, 215, 0, 0.8);
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-        transform: scale(1.05); color: #fff;
-    }
+        /* 下载按钮 - 移动端适配 */
+        .download-btn-container {
+            position: fixed; 
+            bottom: 3vw; 
+            left: 50%;
+            transform: translateX(-50%); 
+            z-index: 1000;
+        }
 
-    .control-btn:active { transform: scale(0.95); }
+        .download-btn {
+            background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
+            color: var(--gold-dark) !important;
+            border: 1px solid var(--gold-secondary) !important;
+            padding: 2vw 4vw; /* 相对内边距 */
+            border-radius: 1vw; /* 大圆角 */
+            cursor: pointer; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: relative; 
+            padding-right: 8vw; /* 相对右边距 */
+            font-family: var(--font-main);
+            font-size: 3.5vw; /* 相对字体 */
+        }
 
-    /* 隐藏的文件输入框 */
-    #file-input { display: none; }
-    
-    /* 摄像头预览窗 (动态调整大小) */
-    #webcam-wrapper {
-        position: absolute; 
-        bottom: 20px; right: 20px; 
-        /* 删除固定的 width 和 height，改为由 JS 控制 */
-        opacity: 0; pointer-events: none;
-        border: 1px solid rgba(255, 215, 0, 0.5);
-        border-radius: 4px;
-        background: #000; 
-        z-index: 50;
-        /* 关键：确保容器紧贴 Canvas 内容 */
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        transform: scale(0.95); /* 初始缩小 */
-    }
+        .download-btn:hover, .download-btn:active { 
+            background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+        }
 
-    #webcam-wrapper.show {
-        opacity: 1;
-        pointer-events: auto;
-        transform: scale(1); /* 显示时恢复正常大小 */
-    }
+        .close-btn {
+            background-color: rgba(0,0,0,0.5) !important;
+            color: var(--gold-primary) !important;
+            width: 6vw; /* 相对大小 */
+            height: 6vw; /* 相对大小 */
+            border: none; 
+            border-radius: 50%;
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            position: absolute; 
+            right: 2vw; 
+            top: 50%; 
+            transform: translateY(-50%);
+            font-size: 4vw; /* 相对字体 */
+            line-height: 1;
+        }
 
-    #webcam { display: none; }
-    
-    #webcam-preview {
-        display: block; /* 消除 img/canvas底部的默认间距 */
-        width: 100%; 
-        height: 100%; 
-        transform: scaleX(-1); /* 镜像翻转 */
-    }
+        .hidden { display: none !important; }
 
-    /* 下载按钮 (特殊功能) - 改为金色风格 */
-    .download-btn-container {
-        position: fixed; bottom: 20px; left: 50%;
-        transform: translateX(-50%); z-index: 1000;
-    }
+        /* fadeIn 动画 */
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
 
-    .download-btn {
-        background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
-        color: var(--gold-dark) !important;
-        border: 1px solid var(--gold-secondary) !important;
-        padding: 10px 20px; 
-        border-radius: 5px;
-        cursor: pointer; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        position: relative; 
-        padding-right: 35px;
-        font-family: var(--font-main);
-    }
+        /* 奖励冻结层 - 移动端核心适配 */
+        #rewardFreezeOverlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0,0,0,0.2) !important;
+            z-index: 999999 !important;
+            display: none !important;
+            flex-direction: column !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+            padding-bottom: 15vw !important; /* 移动端相对底部间距 */
+        }
 
-    .download-btn:hover { 
-        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
-    }
+        #rewardFreezeOverlay div {
+            color: #ffd700 !important;
+            font-family: 'Cinzel', serif !important;
+            font-size: 5vw !important; /* 移动端相对字体 */
+            margin-bottom: 5vw !important; /* 相对间距 */
+            text-shadow: 0 0 10px #ffd700 !important;
+        }
+    </style>
 
-    .close-btn {
-        background-color: rgba(0,0,0,0.5) !important;
-        color: var(--gold-primary) !important;
-        width: 20px; height: 20px; 
-        border: none; 
-        border-radius: 50%;
-        cursor: pointer; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        position: absolute; right: 8px; top: 50%; 
-        transform: translateY(-50%);
-        font-size: 14px; line-height: 1;
-    }
-
-    .hidden { display: none !important; }
-
-    /* 补充 fadeIn 动画（原代码引用但未定义） */
-    @keyframes fadeIn {
-        0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-        100% { opacity: 1; transform: translateX(-50%) translateY(0); }
-    }
-</style>
-
-	<!-- 2. GSAP 库引入（新增，放在样式之后、业务JS之前） -->
+    <!-- GSAP 库引入 -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
 
     <script type="importmap">
@@ -365,65 +403,46 @@
 
 <body>
     <div id="loader">
-    <div class="spinner"></div>
-    <div class="loader-text">
-        Initial loading requires image content, please wait
+        <div class="spinner"></div>
+        <div class="loader-text">
+            Initial loading requires image content, please wait
+        </div>
     </div>
-</div>
-
 
     <div id="canvas-container"></div>
-    <!-- 标题 -->
-<div id="title">
-    <img id="uploaded-image" src="" alt="Uploaded Image" class="title-logo",style="display: none;">
-    <span><br> Wish You Merry Christmas</span>
-</div>
 
+    <!-- 标题 -->
+    <div id="title">
+        <img id="uploaded-image" src="" alt="Uploaded Image" class="title-logo" style="display: none;">
+        <span><br> Wish You Merry Christmas</span>
+    </div>
 
     <div id="ui-layer">
         <div id="top-right-controls">
             <button id="btn-fullscreen" class="control-btn">Full Screen Mode</button>
         </div>
     </div>
-	
-	<div id="ui-layer2">
-    <div class="instruction">✊→<b>Fist</b> to SUMMON Tree</div>
-    <div class="instruction">✋→<b>Open Hand</b> to SCATTER</div>
-	<div class="instruction">Move✋→<b>Move Palm</b> to Control ROTATION</div>
-    <div class="instruction">🤏→<b>Pinch</b> to CATCH Memory Photo</div>
-</div>
+
+    <div id="ui-layer2">
+        <div class="instruction">✊→<b>Fist</b> to SUMMON Tree</div>
+        <div class="instruction">✋→<b>Open Hand</b> to SCATTER</div>
+        <div class="instruction">Move✋→<b>Move Palm</b> to Control ROTATION</div>
+        <div class="instruction">🤏→<b>Pinch</b> to CATCH Memory Photo</div>
+    </div>
 
     <div id="webcam-wrapper">
         <video id="webcam" autoplay playsinline webkit-playsinline></video>
         <canvas id="webcam-preview"></canvas>
     </div>
-    <!-- 启动按钮：底部居中显示，金色主色调优化 -->
-<button id="start-btn" style="
-  position: fixed !important;
-  bottom: 50px !important; /* 距离底部50px，可根据需要调整 */
-  left: 50% !important;
-  transform: translateX(-50%) !important; /* 仅水平居中，去掉垂直偏移 */
-  z-index: 99999 !important;
-  padding: 22px 48px !important; /* 优化内边距，更舒展 */
-  background: linear-gradient(135deg, #ffd700 0%, #f0c808 100%) !important; /* 金色渐变，更有质感 */
-  color: #2c1f00 !important; /* 深金色文字，对比更和谐 */
-  border: 2px solid #e0b800 !important; /* 暗金边框，增加层次 */
-  border-radius: 16px !important; /* 更大圆角，更柔和 */
-  font-size: 20px !important;
-  font-weight: 600 !important; /* 加粗文字，更醒目 */
-  cursor: pointer !important;
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important; /* 金色柔光阴影，贴合主色调 */
-  display: none !important; /* 初始隐藏 */
-  pointer-events: none !important;
-  opacity: 1 !important;
-  transition: all 0.3s ease !important; /*  hover动画过渡 */
-">
-  Start HOW JOURNEY <!-- 小修正：原HOW改为OUR更通顺 -->
-</button>
+
+    <!-- 启动按钮 -->
+    <button id="start-btn">
+        Start OUR JOURNEY
+    </button>
+
     <audio id="bg-music" autoplay loop >
-    <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
-</audio>
-	
+        <source src="./assets/music/How_XMAS_music.ogg" type="audio/ogg">
+    </audio>
 
     <div class="download-btn-container" id="downloadContainer">
         <button class="download-btn" onclick="downloadHTML()">
@@ -432,47 +451,91 @@
         </button>
     </div>
 
-	<!-- ====================== 奖励冻结继续按钮 添加在这里 ====================== -->
-    <div id="rewardFreezeOverlay" style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.2); /* 半透明黑底，突出奖励 */
-      z-index: 999999; /* 层级高于启动按钮，确保覆盖全屏 */
-      display: none;
-      flex-direction: column;
-      justify-content: flex-end; /* 底部对齐，避开奖励文字 */
-      align-items: center;
-      padding-bottom: 100px; /* 底部留空，不遮挡奖励文字 */
-    ">
-        <div style="
-          color: #ffd700;
-          font-family: 'Cinzel', serif;
-          font-size: 24px;
-          margin-bottom: 30px;
-          text-shadow: 0 0 10px #ffd700;
-        ">
-          📸 Screenshot Time! Click to Continue
-        </div>
-        <button id="continueBtn" style="
-          padding: 15px 40px;
-          background: #ffd700;
-          color: #2c1f00;
-          border: none;
-          border-radius: 8px;
-          font-family: 'Cinzel', serif;
-          font-size: 20px;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 0 15px #ffd700;
-          transition: all 0.3s ease;
-        ">
-          Continue Playing
-        </button>
+    <!-- 奖励冻结继续按钮 -->
+    <div id="rewardFreezeOverlay">
+        <div>📸 Screenshot Time! Click to Continue</div>
+        <button id="continueBtn">Continue Playing</button>
     </div>
-    <!-- ====================== 按钮添加结束 ====================== -->
+
+    <!-- 新增：移动端事件适配脚本 -->
+    <script>
+        // 初始化全局冻结标记
+        window.isRewardFrozen = false;
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 继续按钮点击事件
+            const continueBtn = document.getElementById('continueBtn');
+            if (continueBtn) {
+                continueBtn.addEventListener('click', function() {
+                    window.isRewardFrozen = false;
+                    const freezeOverlay = document.getElementById('rewardFreezeOverlay');
+                    if (freezeOverlay) freezeOverlay.style.display = 'none';
+                });
+            }
+
+            // 全屏按钮适配移动端
+            const fullscreenBtn = document.getElementById('btn-fullscreen');
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!document.fullscreenElement) {
+                        // 移动端全屏兼容
+                        const elem = document.documentElement;
+                        if (elem.requestFullscreen) {
+                            elem.requestFullscreen();
+                        } else if (elem.webkitRequestFullscreen) { // iOS/Android
+                            elem.webkitRequestFullscreen();
+                        } else if (elem.msRequestFullscreen) {
+                            elem.msRequestFullscreen();
+                        }
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        } else if (document.webkitExitFullscreen) {
+                            document.webkitExitFullscreen();
+                        } else if (document.msExitFullscreen) {
+                            document.msExitFullscreen();
+                        }
+                    }
+                });
+
+                // 全屏状态文字适配
+                document.addEventListener('fullscreenchange', function() {
+                    if (document.fullscreenElement) {
+                        fullscreenBtn.textContent = 'Exit Fullscreen';
+                    } else {
+                        fullscreenBtn.textContent = 'Full Screen Mode';
+                    }
+                });
+            }
+
+            // 移动端触摸优化：禁用默认行为
+            document.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+
+            // 启动按钮显示逻辑（移动端适配）
+            setTimeout(function() {
+                const startBtn = document.getElementById('start-btn');
+                if (startBtn) {
+                    startBtn.style.display = 'block';
+                    startBtn.style.pointerEvents = 'auto';
+                }
+            }, 2000);
+        });
+
+        // 模拟下载函数（避免报错）
+        function downloadHTML() {
+            alert('Download function will be implemented!');
+        }
+
+        function closeDownloadBtn(event) {
+            event.stopPropagation();
+            const container = document.getElementById('downloadContainer');
+            if (container) container.classList.add('hidden');
+        }
+    </script>
 </body>
 
     <script type="module">
