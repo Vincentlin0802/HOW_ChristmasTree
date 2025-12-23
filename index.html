@@ -1759,7 +1759,7 @@ STATE.spinVel.y *= 0.9;
  * @param {THREE.Group} mesh - 照片Group容器
  * @param {number} brightness - 亮度补偿值（0~2，默认1.2，越高越亮）
  */
-function resetPhotoMaterialForLowReflect(mesh, brightness = 1.2) {
+function resetPhotoMaterialForLowReflect(mesh, brightness = 1.5) {
   if (!mesh) return;
   mesh.traverse((child) => {
     if (child.isMesh) {
@@ -1775,7 +1775,7 @@ function resetPhotoMaterialForLowReflect(mesh, brightness = 1.2) {
         mat.specularIntensity = 0.1;// 从0.0升到0.1（极轻微高光）
         mat.clearcoat = 0;          
         mat.clearcoatRoughness = 1;
-        mat.envMapIntensity = 0.1;  // 从0.0升到0.1（轻微环境反光）
+        mat.envMapIntensity = 0.5;  // 从0.0升到0.1（轻微环境反光）
         
         // 核心：材质颜色亮度补偿（不触发反光）
         mat.color.offsetHSL(0, 0, brightness - 1); // 只调亮度通道
@@ -1851,7 +1851,7 @@ function triggerRewardEffect(mesh, probability) {
         // 只降低照片15单位内的光源（缩小范围，避免影响全局）
         const distance = obj.position.distanceTo(mesh.position);
         if (distance < 15) {
-          obj.intensity *= 0.6; // 强度降为40%（比之前更保守，减少反光）
+          obj.intensity *= 0.9; // 强度降为40%（比之前更保守，减少反光）
         }
       }
     });
