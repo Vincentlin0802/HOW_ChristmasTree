@@ -24,7 +24,7 @@
   "rewardImages": [
     {
       "name": "reward1.jpg",
-      "probability": 0.2
+      "probability": 0.05
     }
   ]
 }
