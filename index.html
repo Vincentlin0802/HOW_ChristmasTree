@@ -86,11 +86,11 @@
 @media (max-width: 768px) {
     #title {
         top: 2vw; /* 相对单位，适配不同手机 */
-        font-size: 4vw;
-        letter-spacing: 0.4vw;
+        font-size: 3vw;
+        letter-spacing: 0.3vw;
     }
     .title-logo {
-        width: 28vw; /* 相对单位 */
+        width: 30vw; /* 相对单位 */
     }
     :fullscreen .title-logo {
         width: 15vw;
@@ -104,10 +104,6 @@
     transition: all 0.3s ease; /* 尺寸变化时平滑过渡 */
     }
 
-    /* 全屏时放大 Logo */
-    :fullscreen .title-logo {
-        width: 90px; /* 全屏宽度 */
-    }
 
     /* 小屏幕适配（手机端） */
     @media (max-width: 768px) {
@@ -216,18 +212,18 @@
 /* 启动按钮 - 移动端 */
 @media (max-width: 768px) {
     #start-btn {
-        bottom: 8vw;
-        padding: 4vw 8vw;
-        font-size: 4vw;
-        border-radius: 4vw;
+        bottom: 6vw;
+        padding: 3vw 7vw;
+        font-size: 3.5vw;
+        border-radius: 3.5vw;
     }
     #start-btn:hover, #start-btn:active {
         background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
         box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
-        transform: translateX(-50%) translateY(-1vw);
+        transform: translateX(-50%) translateY(-0.8vw);
     }
     #start-btn:active {
-        transform: translateX(-50%) translateY(0.5vw) scale(0.95);
+        transform: translateX(-50%) translateY(0.4vw) scale(0.95);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 }
