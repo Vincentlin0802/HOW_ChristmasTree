@@ -1622,29 +1622,39 @@ function createRewardParticles(centerPos, isBig = false) {
 }
 
 // 升级：奖励UI提示（动画入场+文字特效+背景光晕）
+// 适配单种隐藏奖励：纯英文提示（无区分，统一酷炫效果）
 function showRewardTip(probability) {
   const tip = document.createElement('div');
-  const text = probability <= 0.05 ? '🎉 稀有奖励！' : '🎁 恭喜解锁奖励！';
+  // 仅保留统一的隐藏奖励英文文案（你要的“恭喜解锁隐藏奖励”英文版）
+  const enText = '🎁 Congratulations! Hidden Reward Unlocked';
+  
+  // 统一样式（用38px金色衬线字体，带字母间距，适配圣诞高级感）
   tip.style.cssText = `
     position: fixed; 
     top: 50%; 
     left: 50%; 
     transform: translate(-50%, -50%) scale(0);
-    font-size: ${probability <= 0.05 ? '48px' : '36px'}; 
-    font-weight: bold; 
+    text-align: center;
+    font-weight: 600; 
     color: #ffd700;
     text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
     z-index: 999999; 
     pointer-events: none;
-    font-family: 'Cinzel', serif; /* 匹配你的衬线字体 */
+    font-family: 'Cinzel', serif; /* 衬线字体，和你的页面风格统一 */
     background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 70%);
-    padding: 20px 40px;
-    border-radius: 10px;
+    padding: 25px 60px;
+    border-radius: 12px;
+    letter-spacing: 1.5px; /* 英文字母间距，更易读 */
   `;
-  tip.innerText = text;
+  
+  // 统一38px字体大小（视觉更醒目，适配单种奖励）
+  tip.innerHTML = `
+    <span style="display: block; font-size: 38px;">${enText}</span>
+  `;
+  
   document.body.appendChild(tip);
   
-  // 入场动画：缩放+回弹
+  // 保留酷炫的入场/闪烁/退场动画
   gsap.to(tip.style, { 
     scale: 1.2, 
     duration: 0.5, 
@@ -1654,12 +1664,10 @@ function showRewardTip(probability) {
     }
   });
   
-  // 闪烁动画
   let flashInterval = setInterval(() => {
     tip.style.opacity = Math.random() > 0.5 ? 1 : 0.8;
   }, 200);
   
-  // 退场动画
   setTimeout(() => {
     clearInterval(flashInterval);
     gsap.to(tip.style, { 
@@ -1669,9 +1677,64 @@ function showRewardTip(probability) {
       ease: 'power2.inOut',
       onComplete: () => document.body.removeChild(tip)
     });
-  }, 3000); // 延长显示时间
+  }, 4000);
+}// 适配单种隐藏奖励：纯英文提示（无区分，统一酷炫效果）
+function showRewardTip(probability) {
+  const tip = document.createElement('div');
+  // 仅保留统一的隐藏奖励英文文案（你要的“恭喜解锁隐藏奖励”英文版）
+  const enText = '🎁 Congratulations! Hidden Reward Unlocked';
+  
+  // 统一样式（用38px金色衬线字体，带字母间距，适配圣诞高级感）
+  tip.style.cssText = `
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%) scale(0);
+    text-align: center;
+    font-weight: 600; 
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
+    z-index: 999999; 
+    pointer-events: none;
+    font-family: 'Cinzel', serif; /* 衬线字体，和你的页面风格统一 */
+    background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 70%);
+    padding: 25px 60px;
+    border-radius: 12px;
+    letter-spacing: 1.5px; /* 英文字母间距，更易读 */
+  `;
+  
+  // 统一38px字体大小（视觉更醒目，适配单种奖励）
+  tip.innerHTML = `
+    <span style="display: block; font-size: 38px;">${enText}</span>
+  `;
+  
+  document.body.appendChild(tip);
+  
+  // 保留酷炫的入场/闪烁/退场动画
+  gsap.to(tip.style, { 
+    scale: 1.2, 
+    duration: 0.5, 
+    ease: 'power2.out',
+    onComplete: () => {
+      gsap.to(tip.style, { scale: 1, duration: 0.2, ease: 'power2.in' });
+    }
+  });
+  
+  let flashInterval = setInterval(() => {
+    tip.style.opacity = Math.random() > 0.5 ? 1 : 0.8;
+  }, 200);
+  
+  setTimeout(() => {
+    clearInterval(flashInterval);
+    gsap.to(tip.style, { 
+      opacity: 0, 
+      scale: 0.8,
+      duration: 1.2, 
+      ease: 'power2.inOut',
+      onComplete: () => document.body.removeChild(tip)
+    });
+  }, 4000);
 }
-
 // 新增：全屏闪光特效
 function createScreenFlash() {
   const flash = document.createElement('div');
