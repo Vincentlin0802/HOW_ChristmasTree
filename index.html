@@ -1625,42 +1625,41 @@ function createRewardParticles(centerPos, isBig = false) {
 // 适配单种隐藏奖励：纯英文提示（无区分，统一酷炫效果）
 function showRewardTip(probability) {
   const tip = document.createElement('div');
-  // 仅保留统一的隐藏奖励英文文案（你要的“恭喜解锁隐藏奖励”英文版）
   const enText = '🎁 Congratulations! Hidden Reward Unlocked';
   
-  // 统一样式（用38px金色衬线字体，带字母间距，适配圣诞高级感）
   tip.style.cssText = `
     position: fixed; 
     top: 50%; 
     left: 50%; 
-    transform: translate(-50%, -50%) scale(0);
+    transform: translate(-50%, -50%) scale(1); /* 初始scale=1，强制显示 */
     text-align: center;
     font-weight: 600; 
     color: #ffd700;
     text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
     z-index: 1000000; 
     pointer-events: none;
-    font-family: 'Cinzel', serif; /* 衬线字体，和你的页面风格统一 */
+    font-family: 'Cinzel', serif;
     background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 70%);
     padding: 25px 60px;
     border-radius: 12px;
-    letter-spacing: 1.5px; /* 英文字母间距，更易读 */
+    letter-spacing: 1.5px;
+    opacity: 1; /* 强制不透明 */
   `;
   
-  // 统一38px字体大小（视觉更醒目，适配单种奖励）
   tip.innerHTML = `
     <span style="display: block; font-size: 38px;">${enText}</span>
   `;
   
   document.body.appendChild(tip);
+  console.log('✅ 奖励文字已创建，DOM节点：', tip); // 加日志，确认创建
   
-  // 保留酷炫的入场/闪烁/退场动画
-  gsap.to(tip.style, { 
+  // 保留GSAP动画，但从“初始scale=1”开始动画（即使GSAP失效，文字也能看见）
+  gsap.to(tip, { // 直接操作元素，而非tip.style（GSAP推荐写法，更稳定）
     scale: 1.2, 
     duration: 0.5, 
     ease: 'power2.out',
     onComplete: () => {
-      gsap.to(tip.style, { scale: 1, duration: 0.2, ease: 'power2.in' });
+      gsap.to(tip, { scale: 1, duration: 0.2, ease: 'power2.in' });
     }
   });
   
@@ -1670,7 +1669,7 @@ function showRewardTip(probability) {
   
   setTimeout(() => {
     clearInterval(flashInterval);
-    gsap.to(tip.style, { 
+    gsap.to(tip, { 
       opacity: 0, 
       scale: 0.8,
       duration: 1.2, 
@@ -1678,7 +1677,7 @@ function showRewardTip(probability) {
       onComplete: () => document.body.removeChild(tip)
     });
   }, 4000);
-}// 适配单种隐藏奖励：纯英文提示（无区分，统一酷炫效果）
+}
 
 // 新增：全屏闪光特效
 function createScreenFlash() {
