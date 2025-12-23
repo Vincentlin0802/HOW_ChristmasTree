@@ -1464,6 +1464,7 @@ STATE.spinVel.y *= 0.9;
 }
 
 		/// 普通照片特效（基础放大+弱发光）
+// 普通照片特效（仅保留缩放，完全移除发光逻辑）
 function triggerNormalEffect(mesh) {
   // 防御性校验：mesh不存在直接返回
   if (!mesh) {
@@ -1471,25 +1472,15 @@ function triggerNormalEffect(mesh) {
     return;
   }
 
-  // 1. 遍历Group找到照片层（PlaneGeometry）的Mesh
-  mesh.traverse((child) => {
-    if (child.isMesh && child.geometry instanceof THREE.PlaneGeometry) {
-      // 2. 确保材质支持emissive（MeshBasicMaterial→MeshStandardMaterial）
-      if (!child.material.emissive) {
-        child.material = new THREE.MeshStandardMaterial({
-          map: child.material.map,    // 保留原有纹理
-          transparent: true,          // 保留透明属性
-          side: THREE.DoubleSide,     // 双面渲染
-          emissive: 0xffffff,         // 默认白色自发光
-          emissiveIntensity: 0.5      // 默认弱发光
-        });
-      }
-
-      // 3. 设置普通照片的弱发光（修复报错核心）
-      child.material.emissive.setHex(0xffffff);
-      child.material.emissiveIntensity = 0.5;
-    }
-  });
+  // 仅保留普通照片放大逻辑
+  mesh.scale.lerp(new THREE.Vector3(5, 5, 5), 0.1);
+  
+  // 清除残留的奖励特效定时器（避免冲突）
+  if (mesh.rewardPulseInterval) {
+    clearInterval(mesh.rewardPulseInterval);
+    mesh.rewardPulseInterval = null;
+  }
+}
 
   // 4. 普通照片放大（保留原有逻辑）
   mesh.scale.lerp(new THREE.Vector3(5, 5, 5), 0.1);
@@ -1502,20 +1493,19 @@ function triggerNormalEffect(mesh) {
 }
 
 /**
- * 奖励照片专属特效（缩放+发光+粒子+UI提示）
- * @param {THREE.Group} mesh - 照片的Group容器（包含相框+照片）
- * @param {number} probability - 奖励触发概率（0~1）
+ * 奖励照片专属特效（仅保留缩放+脉冲+粒子+UI提示，移除发光）
+ * @param {THREE.Group} mesh - 照片的Group容器
+ * @param {number} probability - 奖励触发概率
  */
 function triggerRewardEffect(mesh, probability) {
-  // 防御性校验：核心参数缺失直接返回
+  // 防御性校验
   if (!mesh || typeof probability !== 'number') {
     console.warn('奖励特效触发失败：参数无效');
     return;
   }
 
-  // 1. 更大缩放+脉冲动画（保留原有逻辑，新增定时器兜底）
+  // 1. 奖励照片缩放+脉冲动画（保留）
   mesh.scale.set(7, 7, 7);
-  // 先清空残留的定时器，避免叠加
   if (mesh.rewardPulseInterval) clearInterval(mesh.rewardPulseInterval);
   
   mesh.rewardPulseInterval = setInterval(() => {
@@ -1523,7 +1513,6 @@ function triggerRewardEffect(mesh, probability) {
     setTimeout(() => mesh.scale.lerp(new THREE.Vector3(7, 7, 7), 0.05), 300);
   }, 600);
   
-  // 兜底：3秒后清空定时器，避免内存泄漏
   setTimeout(() => {
     if (mesh.rewardPulseInterval) {
       clearInterval(mesh.rewardPulseInterval);
@@ -1531,44 +1520,19 @@ function triggerRewardEffect(mesh, probability) {
     }
   }, 3000);
 
-  // 2. 金色高亮发光（修正：找到照片的Mesh再修改材质）
-  // 遍历Group中的子Mesh，找到照片层（PlaneGeometry）
-  mesh.traverse((child) => {
-    if (child.isMesh && child.geometry instanceof THREE.PlaneGeometry) {
-      // 确保材质支持emissive（MeshBasicMaterial需改为MeshStandardMaterial）
-      if (!child.material.emissive) {
-        child.material = new THREE.MeshStandardMaterial({
-          map: child.material.map,
-          transparent: true,
-          side: THREE.DoubleSide
-        });
-      }
-      // 设置金色发光
-      child.material.emissive.setHex(0xffff00);
-      child.material.emissiveIntensity = 2.0;
-      // 3秒后恢复正常
-      setTimeout(() => {
-        child.material.emissive.setHex(0xffffff);
-        child.material.emissiveIntensity = 1.0;
-      }, 3000);
-    }
-  });
+  // 2. 完全删除发光相关逻辑（核心：取消自发光）
 
-  // 3. 金色星尘粒子特效（新增函数存在性校验）
+  // 3. 金色星尘粒子特效（保留，如需移除可注释）
   if (typeof createRewardParticles === 'function') {
     createRewardParticles(mesh.position);
-  } else {
-    console.warn('奖励粒子特效失败：createRewardParticles函数未定义');
   }
 
-  // 4. 屏幕UI提示（新增函数存在性校验）
+  // 4. 屏幕UI提示（保留，如需移除可注释）
   if (typeof showRewardTip === 'function') {
     showRewardTip(probability);
-  } else {
-    console.warn('奖励UI提示失败：showRewardTip函数未定义');
   }
 
-  // 5. 音效（可选，替换为你的音频路径）
+  // 5. 音效（可选，如需移除可保持注释）
   // if (typeof playRewardSound === 'function') {
   //   playRewardSound();
   // }
