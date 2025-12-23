@@ -152,7 +152,11 @@
             bottom: 30px !important;
         }
     }
-
+#continueBtn:hover {
+  background: #f0c808;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px #ffd700;
+}
     /* Loading 动画：带文字提示 + 金色优化版 */
     #loader {
         position: absolute; 
@@ -427,6 +431,49 @@
             <button class="close-btn" onclick="closeDownloadBtn(event)" title="关闭">×</button>
         </button>
     </div>
+
+	<!-- ====================== 奖励冻结继续按钮 添加在这里 ====================== -->
+    <div id="rewardFreezeOverlay" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.5); /* 半透明黑底，突出奖励 */
+      z-index: 999999; /* 层级高于启动按钮，确保覆盖全屏 */
+      display: none;
+      flex-direction: column;
+      justify-content: flex-end; /* 底部对齐，避开奖励文字 */
+      align-items: center;
+      padding-bottom: 100px; /* 底部留空，不遮挡奖励文字 */
+    ">
+        <div style="
+          color: #ffd700;
+          font-family: 'Cinzel', serif;
+          font-size: 24px;
+          margin-bottom: 30px;
+          text-shadow: 0 0 10px #ffd700;
+        ">
+          📸 Screenshot Time! Click to Continue
+        </div>
+        <button id="continueBtn" style="
+          padding: 15px 40px;
+          background: #ffd700;
+          color: #2c1f00;
+          border: none;
+          border-radius: 8px;
+          font-family: 'Cinzel', serif;
+          font-size: 20px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 0 0 15px #ffd700;
+          transition: all 0.3s ease;
+        ">
+          Continue Playing
+        </button>
+    </div>
+    <!-- ====================== 按钮添加结束 ====================== -->
+</body>
 
     <script type="module">
         import * as THREE from 'three';
@@ -1313,6 +1360,8 @@ function processGestures(lm) {
     if (!window.isSceneStarted || !window.mediaPipeInited) return;
     STATE.hand.detected = true;
 
+	if (window.isRewardFrozen) return;
+
     // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
     if (typeof window.photoIndex === 'undefined') {
         window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
@@ -1498,6 +1547,10 @@ function triggerRewardEffect(mesh, probability) {
     console.warn('奖励特效触发失败：参数无效');
     return;
   }
+// ========== 新增：奖励触发后冻结交互 ==========
+  window.isRewardFrozen = true; // 全局标记：冻结状态
+  const freezeOverlay = document.getElementById('rewardFreezeOverlay');
+  if (freezeOverlay) freezeOverlay.style.display = 'flex'; // 显示冻结层+按钮
 
   // 1. 奖励照片缩放+脉冲动画（升级：更快节奏+回弹效果）
   mesh.scale.set(6, 6, 6); // 先缩小，再放大，增加冲击感
@@ -1914,6 +1967,18 @@ const startMusic = () => {
         });
 };
 
+			// 继续按钮点击事件：恢复交互+隐藏按钮
+document.getElementById('continueBtn').addEventListener('click', () => {
+  // 1. 取消冻结标记
+  window.isRewardFrozen = false;
+  // 2. 隐藏冻结层+按钮
+  const freezeOverlay = document.getElementById('rewardFreezeOverlay');
+  if (freezeOverlay) freezeOverlay.style.display = 'none';
+  // 3. 可选：播放点击音效（增强体验）
+  // const clickAudio = new Audio('./assets/audio/click.mp3');
+  // clickAudio.volume = 0.5;
+  // clickAudio.play().catch(err => console.error('点击音效失败：', err));
+});
 // 监听首次点击/触摸（只触发一次）
 window.addEventListener('click', startMusic, { once: true });
 window.addEventListener('touchstart', startMusic, { once: true });
