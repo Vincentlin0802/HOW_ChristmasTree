@@ -1754,6 +1754,48 @@ STATE.spinVel.y *= 0.9;
     window.lastPinch = isPinching;
 }
 
+		/**
+ * 通用工具函数：重置照片材质为「低反光+亮度补偿」模式
+ * @param {THREE.Group} mesh - 照片Group容器
+ * @param {number} brightness - 亮度补偿值（0~2，默认1.2，越高越亮）
+ */
+function resetPhotoMaterialForLowReflect(mesh, brightness = 1.2) {
+  if (!mesh) return;
+  mesh.traverse((child) => {
+    if (child.isMesh) {
+      const mat = child.material;
+      // 1. 关闭自发光（核心，不改动）
+      mat.emissive.setHex(0x000000);
+      mat.emissiveIntensity = 0;
+      
+      // 2. 低反光参数（适度放宽，提升亮度）
+      if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
+        mat.roughness = 0.8;        // 从1.0降到0.8（轻微反光，提升亮度）
+        mat.metalness = 0.1;        // 从0.0升到0.1（极轻微金属感，提升亮度）
+        mat.specularIntensity = 0.1;// 从0.0升到0.1（极轻微高光）
+        mat.clearcoat = 0;          
+        mat.clearcoatRoughness = 1;
+        mat.envMapIntensity = 0.1;  // 从0.0升到0.1（轻微环境反光）
+        
+        // 核心：材质颜色亮度补偿（不触发反光）
+        mat.color.offsetHSL(0, 0, brightness - 1); // 只调亮度通道
+        mat.needsUpdate = true;
+      }
+      
+      // 3. 针对基础材质：直接提升颜色亮度
+      if (mat instanceof THREE.MeshBasicMaterial) {
+        mat.lights = false; // 仍屏蔽场景光（关键）
+        // 亮度补偿（比如1.2=提升20%亮度）
+        const currentColor = mat.color.clone();
+        currentColor.multiplyScalar(brightness);
+        mat.color = currentColor;
+        mat.needsUpdate = true;
+      }
+    }
+  });
+}
+		
+
 		/// 普通照片特效（基础放大+弱发光）
 // 普通照片特效（仅保留缩放，完全移除发光逻辑）
 function triggerNormalEffect(mesh) {
@@ -1777,41 +1819,79 @@ function triggerNormalEffect(mesh) {
  * @param {THREE.Group} mesh - 照片的Group容器
  * @param {number} probability - 奖励触发概率
  */
+/**
+ * 奖励照片专属特效（彻底解决反光+保留相框发光）
+ * @param {THREE.Group} mesh - 照片的Group容器
+ * @param {number} probability - 奖励触发概率
+ */
 function triggerRewardEffect(mesh, probability) {
   // 防御性校验
   if (!mesh || typeof probability !== 'number') {
     console.warn('奖励特效触发失败：参数无效');
     return;
   }
-// ========== 新增：奖励触发后冻结交互 ==========
+
+  // ========== 新增：奖励触发后冻结交互 ==========
   window.isRewardFrozen = true; // 全局标记：冻结状态
   const freezeOverlay = document.getElementById('rewardFreezeOverlay');
   if (freezeOverlay) freezeOverlay.style.display = 'flex'; // 显示冻结层+按钮
 
-  // 1. 奖励照片缩放+脉冲动画（升级：更快节奏+回弹效果）
-  mesh.scale.set(6, 6, 6); // 先缩小，再放大，增加冲击感
-  gsap.to(mesh.scale, { x: 7.5, y: 7.5, z: 7.5, duration: 0.3, ease: 'power2.out' });
-  gsap.to(mesh.scale, { x: 7, y: 7, z: 7, duration: 0.2, delay: 0.3, ease: 'power2.in' });
+  // ========== 核心修复1：先重置照片材质为低反光模式 ==========
+  resetPhotoMaterialForLowReflect(mesh,4);
+
+  // ========== 核心修复2：临时降低照片周围场景光（减少缩放反光） ==========
+  const originalLightIntensities = [];
+  if (typeof scene !== 'undefined' && scene) {
+    scene.traverse((obj) => {
+      if (obj.isLight && obj.intensity > 0) {
+        originalLightIntensities.push({
+          light: obj,
+          intensity: obj.intensity
+        });
+        // 只降低照片15单位内的光源（缩小范围，避免影响全局）
+        const distance = obj.position.distanceTo(mesh.position);
+        if (distance < 15) {
+          obj.intensity *= 0.4; // 强度降为40%（比之前更保守，减少反光）
+        }
+      }
+    });
+  }
+
+  // 1. 奖励照片缩放+脉冲动画（适度缩小，减少受光面积）
+  mesh.scale.set(5, 5, 5); // 初始尺寸更小，减少反光基础
+  gsap.to(mesh.scale, { x: 6, y: 6, z: 6, duration: 0.3, ease: 'power2.out' });
+  gsap.to(mesh.scale, { x: 5.5, y: 5.5, z: 5.5, duration: 0.2, delay: 0.3, ease: 'power2.in' });
   
-  // 循环脉冲（升级：更细腻的缩放节奏）
+  // 循环脉冲（同步缩小，避免过度放大）
   if (mesh.rewardPulseInterval) clearInterval(mesh.rewardPulseInterval);
   mesh.rewardPulseInterval = setInterval(() => {
-    gsap.to(mesh.scale, { x: 7.5, y: 7.5, z: 7.5, duration: 0.2, ease: 'power1.out' });
-    gsap.to(mesh.scale, { x: 7, y: 7, z: 7, duration: 0.2, delay: 0.2, ease: 'power1.in' });
-  }, 800); // 缩短间隔，更灵动
+    gsap.to(mesh.scale, { x: 6, y: 6, z: 6, duration: 0.2, ease: 'power1.out' });
+    gsap.to(mesh.scale, { x: 5.5, y: 5.5, z: 5.5, duration: 0.2, delay: 0.2, ease: 'power1.in' });
+  }, 800);
   
   setTimeout(() => {
     if (mesh.rewardPulseInterval) {
       clearInterval(mesh.rewardPulseInterval);
       mesh.rewardPulseInterval = null;
-      // 结束后回弹到正常大小（更自然）
+      // 结束后回弹到正常大小
       gsap.to(mesh.scale, { x: 5, y: 5, z: 5, duration: 0.5, ease: 'elastic.out(1, 0.3)' });
     }
-  }, 4000); // 延长特效时长
 
-  // 2. 新增：照片相框发光（不影响图片本身，只让相框发光）
+    // 特效结束后恢复场景光强度
+    originalLightIntensities.forEach(item => {
+      if (item.light && typeof item.light.intensity !== 'undefined') {
+        item.light.intensity = item.intensity;
+      }
+    });
+  }, 4000);
+
+  // 2. 相框发光（仅相框，照片不发光）
   mesh.traverse((child) => {
-    if (child.isMesh && child.geometry instanceof THREE.BoxGeometry) { // 找到相框
+    // 优先匹配相框标识，无标识则用BoxGeometry（兼容原有逻辑）
+    const isFrame = child.userData.isPhotoFrame || (child.isMesh && child.geometry instanceof THREE.BoxGeometry);
+    const isPhoto = !child.userData.isPhotoFrame && (child.isMesh && child.geometry instanceof THREE.PlaneGeometry);
+
+    if (isFrame && !isPhoto) { // 只让相框发光
       child.material.emissive.setHex(0xffff00);
       child.material.emissiveIntensity = 2.0;
       // 相框呼吸发光
@@ -1827,38 +1907,28 @@ function triggerRewardEffect(mesh, probability) {
         gsap.to(child.material, { emissiveIntensity: 0, duration: 1 });
       }, 4000);
     }
+    // 兜底：确保照片不发光
+    if (isPhoto) {
+      child.material.emissiveIntensity = 0;
+      child.material.emissive.setHex(0x000000);
+    }
   });
 
-	// 3. 调暗照片的亮度
-if (mesh.material) {
-  console.log('mesh.material:', mesh.material); // 检查材质是否有效
-  if (mesh.material.color) {
-    console.log('调整前的照片亮度：', mesh.material.color); // 打印调暗前的颜色
-    mesh.material.color.multiplyScalar(0.7); // 将颜色乘以一个系数，0.7 表示降低亮度
-    console.log('调整后的照片亮度：', mesh.material.color); // 打印调暗后的颜色
-  } else {
-    console.log('mesh.material没有颜色属性');
-  }
-} else {
-  console.log('mesh没有材质');
-}
-	
-  // 3. 金色星尘粒子特效（升级：更多粒子+多种形态+轨迹动画）
+  // 3. 金色星尘粒子特效（保留）
   if (typeof createRewardParticles === 'function') {
-    // 多波粒子，增加层次感
-    createRewardParticles(mesh.position); // 第一波
-    setTimeout(() => createRewardParticles(mesh.position, true), 500); // 第二波（更大粒子）
+    createRewardParticles(mesh.position);
+    setTimeout(() => createRewardParticles(mesh.position, true), 500);
   }
 
-  // 4. 屏幕UI提示（升级：动画入场+渐变+文字动效）
+  // 4. 屏幕UI提示（保留）
   if (typeof showRewardTip === 'function') {
     showRewardTip(probability);
   }
 
-  // 5. 新增：全屏闪光特效
+  // 5. 全屏闪光特效（保留）
   createScreenFlash();
 
-  // 6. 音效（可选，建议添加，听觉+视觉双重冲击）
+  // 6. 音效（可选）
   // playRewardSound();
 }
 
