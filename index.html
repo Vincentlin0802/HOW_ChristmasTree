@@ -2,8 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>HOW Christmas Tree Journey</title>
+    <!-- 核心修改：优化视口配置，兼容PC+移动端 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- 新增：移动端全屏/状态栏适配 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>HOW Christmas Tree Journey</title>
     
     <style>
     /* 引入衬线字体，营造高级感 */
@@ -15,6 +21,7 @@
         --gold-secondary: #f0c808;
         --gold-dark: #2c1f00;
         --font-main: 'Cinzel', serif;
+		--mobile-breakpoint: 768px;
     }
 
     /* 全局基础设置 */
@@ -26,26 +33,68 @@
         touch-action: none; /* 禁止默认触摸行为 */
         -webkit-user-select: none; 
         user-select: none; 
+		width: 100vw;
+    	height: 100vh;
     }
+		/* PC端body样式（屏幕>768px） */
+@media (min-width: 769px) {
+    body {
+        touch-action: none; /* PC端禁用触摸行为 */
+    }
+}
 
-    #title {
+/* 移动端body样式（屏幕≤768px） */
+@media (max-width: 768px) {
+    body {
+        touch-action: manipulation; /* 移动端优化触摸，禁用双击缩放 */
+        -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+    }
+}
+
+    /* 标题 - 通用样式 */
+#title {
     position: absolute;
-    top: 15px; /* 距离顶部的距离 */
     left: 50%;
-    transform: translateX(-50%); /* 居中对齐 */
+    transform: translateX(-50%);
     font-family: var(--font-main);
-    font-size: 30px;
-    color: var(--gold-primary); /* 金色 */
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary); /* 金光效果 */
-    letter-spacing: 2px;
+    color: var(--gold-primary);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 25px var(--gold-primary), 0 0 5px var(--gold-primary);
     font-weight: bold;
-    z-index: 1000; /* 让标题在最上层 */
+    z-index: 1000;
     text-align: center;
-    
-    /* 新增：初始隐藏 */
     opacity: 0;
     pointer-events: none;
     transition: opacity 1s ease-in-out;
+}
+
+/* 标题 - PC端 */
+@media (min-width: 769px) {
+    #title {
+        top: 15px;
+        font-size: 30px;
+        letter-spacing: 2px;
+    }
+    .title-logo {
+        width: 130px;
+    }
+    :fullscreen .title-logo {
+        width: 90px;
+    }
+}
+
+/* 标题 - 移动端 */
+@media (max-width: 768px) {
+    #title {
+        top: 2vw; /* 相对单位，适配不同手机 */
+        font-size: 5vw;
+        letter-spacing: 0.5vw;
+    }
+    .title-logo {
+        width: 20vw; /* 相对单位 */
+    }
+    :fullscreen .title-logo {
+        width: 15vw;
+    }
 }
 
     .title-logo {
@@ -84,22 +133,38 @@
         background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
     }
 
-    /* 操作说明初始隐藏，添加过渡动画 */
+   /* 操作说明 - 通用样式 */
 #ui-layer2 {
     position: absolute;
-    bottom: 20px; /* Move to the bottom */
-    left: 20px; /* Keep it at the left side */
     z-index: 1000;
     font-family: var(--font-main);
     color: var(--gold-primary);
-    font-size: 16px;
     line-height: 1.6;
-    pointer-events: none; /* Prevent interaction */
-    /* 新增：初始隐藏 */
+    pointer-events: none;
     opacity: 0;
     transition: opacity 1s ease-in-out; 
 }
-		/* 显示状态的样式 */
+
+/* 操作说明 - PC端 */
+@media (min-width: 769px) {
+    #ui-layer2 {
+        bottom: 20px;
+        left: 20px;
+        font-size: 16px;
+    }
+}
+
+/* 操作说明 - 移动端 */
+@media (max-width: 768px) {
+    #ui-layer2 {
+        bottom: 3vw;
+        left: 3vw;
+        font-size: 3.5vw;
+        max-width: 80%; /* 防止文字溢出 */
+    }
+}
+
+/* 显示状态 - 通用 */
 #title.show, #ui-layer2.show {
     opacity: 1;
     pointer-events: auto;
@@ -109,18 +174,16 @@
     /* 启动按钮基础样式（核心修复：hover 失效问题） */
 /* 启动按钮基础样式（临时恢复可见性） */
 /* 普通状态 */
+/* 启动按钮 - 通用样式 */
 #start-btn {
     position: fixed;
-    bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 99999;
-    padding: 22px 45px;
     background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%);
     color: var(--gold-dark);
     border: 2px solid var(--gold-secondary);
     border-radius: 16px;
-    font-size: 20px;
     font-weight: 600;
     font-family: var(--font-main);
     cursor: pointer;
@@ -129,224 +192,409 @@
     visibility: visible;
     pointer-events: auto;
     transition: all 0.3s ease;
+    display: none; /* 初始隐藏 */
 }
 
-/* hover 状态 */
-#start-btn:hover {
-    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
-    transform: translateX(-50%) translateY(-3px);
-}
-
-/* 按下状态 */
-#start-btn:active {
-    transform: translateX(-50%) translateY(1px) scale(0.95);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-    /* 启动按钮移动端适配 */
-    @media (max-width: 768px) {
-        #start-btn {
-            padding: 16px 32px !important;
-            font-size: 16px !important;
-            bottom: 30px !important;
-        }
+/* 启动按钮 - PC端 */
+@media (min-width: 769px) {
+    #start-btn {
+        bottom: 50px;
+        padding: 22px 48px;
+        font-size: 20px;
+        border-radius: 16px;
     }
+    #start-btn:hover {
+        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
+        box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+        transform: translateX(-50%) translateY(-3px);
+    }
+    #start-btn:active {
+        transform: translateX(-50%) translateY(1px) scale(0.95);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+}
+
+/* 启动按钮 - 移动端 */
+@media (max-width: 768px) {
+    #start-btn {
+        bottom: 8vw;
+        padding: 4vw 8vw;
+        font-size: 4vw;
+        border-radius: 4vw;
+    }
+    #start-btn:hover, #start-btn:active {
+        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
+        box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+        transform: translateX(-50%) translateY(-1vw);
+    }
+    #start-btn:active {
+        transform: translateX(-50%) translateY(0.5vw) scale(0.95);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+}
+		
+/* 继续按钮 hover 通用 */
 #continueBtn:hover {
   background: #f0c808;
   transform: scale(1.05);
   box-shadow: 0 0 20px #ffd700;
 }
-    /* Loading 动画：带文字提示 + 金色优化版 */
+
+/* 奖励冻结层 - 通用样式 */
+#rewardFreezeOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.2);
+    z-index: 999999;
+    display: none;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* 奖励冻结层 - PC端 */
+@media (min-width: 769px) {
+    #rewardFreezeOverlay {
+        padding-bottom: 100px;
+    }
+    #rewardFreezeOverlay div {
+        font-size: 24px;
+        margin-bottom: 30px;
+    }
+    #continueBtn {
+        padding: 15px 40px;
+        font-size: 20px;
+        border-radius: 8px;
+    }
+}
+
+/* 奖励冻结层 - 移动端 */
+@media (max-width: 768px) {
+    #rewardFreezeOverlay {
+        padding-bottom: 15vw;
+    }
+    #rewardFreezeOverlay div {
+        font-size: 5vw;
+        margin-bottom: 5vw;
+    }
+    #continueBtn {
+        padding: 3vw 8vw;
+        font-size: 4vw;
+        border-radius: 2vw;
+    }
+}
+    /* Loading 动画 - 通用样式 */
+#loader {
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: #000;
+    z-index: 100;
+    display: flex; 
+    flex-direction: column;
+    align-items: center; 
+    justify-content: center;
+    transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
+    opacity: 1;
+}
+
+#loader.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+}
+
+.spinner {
+    border: 3px solid rgba(255, 215, 0, 0.2);
+    border-top: 3px solid var(--gold-primary);
+    border-radius: 50%; 
+    animation: spin 1.2s ease-in-out infinite;
+    position: relative;
+}
+
+.spinner::after {
+    content: '';
+    position: absolute;
+    border: 2px solid rgba(255, 215, 0, 0.15);
+    border-top: 2px solid var(--gold-secondary);
+    border-radius: 50%;
+    animation: spin 0.8s ease-in-out reverse infinite;
+}
+
+.loader-text {
+    color: var(--gold-primary);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 80%;
+    opacity: 0.9;
+    font-family: var(--font-main);
+}
+
+@keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+}
+
+/* Loading - PC端 */
+@media (min-width: 769px) {
     #loader {
-        position: absolute; 
-        top: 0; 
-        left: 0; 
-        width: 100%; 
-        height: 100%;
-        background: #000; /* 黑色背景突出金色元素 */
-        z-index: 100;
-        display: flex; 
-        flex-direction: column; /* 改为列布局，容纳加载圈+文字 */
-        align-items: center; 
-        justify-content: center;
-        gap: 24px; /* 加载圈和文字的间距 */
-        transition: all 1.2s cubic-bezier(0.23, 1, 0.32, 1);
-        opacity: 1;
+        gap: 24px;
     }
-
-    #loader.hidden {
-        opacity: 0;
-        pointer-events: none;
-        transform: scale(0.95);
-    }
-
     .spinner {
         width: 60px;
-        height: 60px; 
-        border: 3px solid rgba(255, 215, 0, 0.2);
-        border-top: 3px solid var(--gold-primary);
-        border-radius: 50%; 
-        animation: spin 1.2s ease-in-out infinite;
-        position: relative;
+        height: 60px;
     }
-
     .spinner::after {
-        content: '';
-        position: absolute;
         top: 5px;
         left: 5px;
         right: 5px;
         bottom: 5px;
-        border: 2px solid rgba(255, 215, 0, 0.15);
-        border-top: 2px solid var(--gold-secondary);
-        border-radius: 50%;
-        animation: spin 0.8s ease-in-out reverse infinite;
     }
-
-    /* 加载提示文字样式 */
     .loader-text {
-        color: var(--gold-primary); /* 金色文字，匹配主色调 */
         font-size: 16px;
-        font-weight: 400;
-        letter-spacing: 0.5px; /* 轻微字间距，更易读 */
-        text-align: center;
-        line-height: 1.5;
-        max-width: 80%; /* 适配小屏幕，避免文字溢出 */
-        opacity: 0.9; /* 轻微透明，不抢加载圈焦点 */
-        font-family: var(--font-main);
     }
+}
 
-    @keyframes spin { 
-        0% { transform: rotate(0deg); } 
-        100% { transform: rotate(360deg); } 
+/* Loading - 移动端 */
+@media (max-width: 768px) {
+    #loader {
+        gap: 5vw;
     }
+    .spinner {
+        width: 15vw;
+        height: 15vw;
+    }
+    .spinner::after {
+        top: 1vw;
+        left: 1vw;
+        right: 1vw;
+        bottom: 1vw;
+    }
+    .loader-text {
+        font-size: 3.5vw;
+    }
+}
 
-    /* 右上角控制按钮组 */
+    /* 右上角控制按钮组 - 通用样式 */
+#top-right-controls {
+    position: absolute;
+    z-index: 30; 
+    display: flex; 
+    flex-direction: column;
+    gap: 15px;
+    pointer-events: auto;
+}
+
+.control-btn {
+    background: rgba(10, 10, 10, 0.6);
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    color: var(--gold-primary); 
+    width: 100px; 
+    height: auto;
+    padding: 10px 0;
+    border-radius: 12px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-family: var(--font-main);
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+    outline: none; 
+    -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:hover {
+    background: rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.8);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    transform: scale(1.05); 
+    color: #fff;
+}
+
+.control-btn:active { 
+    transform: scale(0.95); 
+}
+
+/* 右上角按钮 - PC端 */
+@media (min-width: 769px) {
     #top-right-controls {
-        position: absolute; top: 20px; right: 20px;
-        z-index: 30; 
-        display: flex; 
-        flex-direction: column; /* 纵向排列 */
-        gap: 15px; /* 按钮间距 */
-        pointer-events: auto;
+        top: 20px;
+        right: 20px;
+        gap: 15px;
     }
-
-    /* 按钮样式  */
     .control-btn {
-        background: rgba(10, 10, 10, 0.6);
-        border: 1px solid rgba(255, 215, 0, 0.4);
-        color: var(--gold-primary); 
-        
-        /* 取消圆形宽高，改为自适应或固定宽度 */
-        width: 100px; 
-        height: auto;
-        padding: 10px 0; /* 上下留白 */
-        
-        border-radius: 12px; /* 圆角矩形 */
-        
-        display: flex; align-items: center; justify-content: center;
-        font-family: var(--font-main); /* 保持字体风格 */
-        font-size: 14px; 
-        font-weight: 600;
-        letter-spacing: 1px;
-        cursor: pointer;
-        backdrop-filter: blur(5px);
-        transition: all 0.3s ease;
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
-        outline: none; -webkit-tap-highlight-color: transparent;
+        width: 100px;
+        padding: 10px 0;
+        font-size: 14px;
+        border-radius: 12px;
     }
+}
 
-    .control-btn:hover {
-        background: rgba(255, 215, 0, 0.2);
-        border-color: rgba(255, 215, 0, 0.8);
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-        transform: scale(1.05); color: #fff;
+/* 右上角按钮 - 移动端 */
+@media (max-width: 768px) {
+    #top-right-controls {
+        top: 3vw;
+        right: 3vw;
+        gap: 2vw;
     }
-
-    .control-btn:active { transform: scale(0.95); }
+    .control-btn {
+        width: 25vw;
+        padding: 2vw 0;
+        font-size: 3.5vw;
+        border-radius: 2vw;
+    }
+}
 
     /* 隐藏的文件输入框 */
-    #file-input { display: none; }
-    
-    /* 摄像头预览窗 (动态调整大小) */
+#file-input { display: none; }
+
+/* 摄像头预览窗 - 通用样式 */
+#webcam-wrapper {
+    position: absolute; 
+    opacity: 0; 
+    pointer-events: none;
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    border-radius: 4px;
+    background: #000; 
+    z-index: 50;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: scale(0.95);
+}
+
+#webcam-wrapper.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
+
+#webcam { display: none; }
+
+#webcam-preview {
+    display: block;
+    width: 100%; 
+    height: 100%; 
+    transform: scaleX(-1);
+}
+
+/* 摄像头预览窗 - PC端 */
+@media (min-width: 769px) {
     #webcam-wrapper {
-        position: absolute; 
-        bottom: 20px; right: 20px; 
-        /* 删除固定的 width 和 height，改为由 JS 控制 */
-        opacity: 0; pointer-events: none;
-        border: 1px solid rgba(255, 215, 0, 0.5);
+        bottom: 20px;
+        right: 20px;
+        width: 200px;
+        height: 280px;
         border-radius: 4px;
-        background: #000; 
-        z-index: 50;
-        /* 关键：确保容器紧贴 Canvas 内容 */
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        transform: scale(0.95); /* 初始缩小 */
     }
+}
 
-    #webcam-wrapper.show {
-        opacity: 1;
-        pointer-events: auto;
-        transform: scale(1); /* 显示时恢复正常大小 */
+/* 摄像头预览窗 - 移动端 */
+@media (max-width: 768px) {
+    #webcam-wrapper {
+        bottom: 3vw;
+        right: 3vw;
+        width: 25vw;
+        height: 35vw;
+        border-radius: 2vw;
     }
+}
 
-    #webcam { display: none; }
-    
-    #webcam-preview {
-        display: block; /* 消除 img/canvas底部的默认间距 */
-        width: 100%; 
-        height: 100%; 
-        transform: scaleX(-1); /* 镜像翻转 */
-    }
+/* 下载按钮 - 通用样式 */
+.download-btn-container {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
 
-    /* 下载按钮 (特殊功能) - 改为金色风格 */
+.download-btn {
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
+    color: var(--gold-dark) !important;
+    border: 1px solid var(--gold-secondary) !important;
+    cursor: pointer; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    position: relative; 
+    font-family: var(--font-main);
+}
+
+.download-btn:hover { 
+    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
+}
+
+.close-btn {
+    background-color: rgba(0,0,0,0.5) !important;
+    color: var(--gold-primary) !important;
+    border: none; 
+    border-radius: 50%;
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    position: absolute; 
+    top: 50%; 
+    transform: translateY(-50%);
+    line-height: 1;
+}
+
+/* 下载按钮 - PC端 */
+@media (min-width: 769px) {
     .download-btn-container {
-        position: fixed; bottom: 20px; left: 50%;
-        transform: translateX(-50%); z-index: 1000;
+        bottom: 20px;
     }
-
     .download-btn {
-        background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
-        color: var(--gold-dark) !important;
-        border: 1px solid var(--gold-secondary) !important;
-        padding: 10px 20px; 
-        border-radius: 5px;
-        cursor: pointer; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        position: relative; 
+        padding: 10px 20px;
+        font-size: 14px;
         padding-right: 35px;
-        font-family: var(--font-main);
+        border-radius: 5px;
     }
-
-    .download-btn:hover { 
-        background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
-    }
-
     .close-btn {
-        background-color: rgba(0,0,0,0.5) !important;
-        color: var(--gold-primary) !important;
-        width: 20px; height: 20px; 
-        border: none; 
-        border-radius: 50%;
-        cursor: pointer; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        position: absolute; right: 8px; top: 50%; 
-        transform: translateY(-50%);
-        font-size: 14px; line-height: 1;
+        width: 20px;
+        height: 20px;
+        font-size: 14px;
+        right: 8px;
     }
+}
 
-    .hidden { display: none !important; }
-
-    /* 补充 fadeIn 动画（原代码引用但未定义） */
-    @keyframes fadeIn {
-        0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-        100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* 下载按钮 - 移动端 */
+@media (max-width: 768px) {
+    .download-btn-container {
+        bottom: 3vw;
     }
+    .download-btn {
+        padding: 2vw 4vw;
+        font-size: 3.5vw;
+        padding-right: 8vw;
+        border-radius: 1vw;
+    }
+    .close-btn {
+        width: 6vw;
+        height: 6vw;
+        font-size: 4vw;
+        right: 2vw;
+    }
+}
+
+/* 通用样式 */
+.hidden { display: none !important; }
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+    
 </style>
 
 	<!-- 2. GSAP 库引入（新增，放在样式之后、业务JS之前） -->
@@ -398,26 +646,7 @@
         <canvas id="webcam-preview"></canvas>
     </div>
     <!-- 启动按钮：底部居中显示，金色主色调优化 -->
-<button id="start-btn" style="
-  position: fixed !important;
-  bottom: 50px !important; /* 距离底部50px，可根据需要调整 */
-  left: 50% !important;
-  transform: translateX(-50%) !important; /* 仅水平居中，去掉垂直偏移 */
-  z-index: 99999 !important;
-  padding: 22px 48px !important; /* 优化内边距，更舒展 */
-  background: linear-gradient(135deg, #ffd700 0%, #f0c808 100%) !important; /* 金色渐变，更有质感 */
-  color: #2c1f00 !important; /* 深金色文字，对比更和谐 */
-  border: 2px solid #e0b800 !important; /* 暗金边框，增加层次 */
-  border-radius: 16px !important; /* 更大圆角，更柔和 */
-  font-size: 20px !important;
-  font-weight: 600 !important; /* 加粗文字，更醒目 */
-  cursor: pointer !important;
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important; /* 金色柔光阴影，贴合主色调 */
-  display: none !important; /* 初始隐藏 */
-  pointer-events: none !important;
-  opacity: 1 !important;
-  transition: all 0.3s ease !important; /*  hover动画过渡 */
-">
+<button id="start-btn">
   Start HOW JOURNEY <!-- 小修正：原HOW改为OUR更通顺 -->
 </button>
     <audio id="bg-music" autoplay loop >
@@ -433,45 +662,10 @@
     </div>
 
 	<!-- ====================== 奖励冻结继续按钮 添加在这里 ====================== -->
-    <div id="rewardFreezeOverlay" style="
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.2); /* 半透明黑底，突出奖励 */
-      z-index: 999999; /* 层级高于启动按钮，确保覆盖全屏 */
-      display: none;
-      flex-direction: column;
-      justify-content: flex-end; /* 底部对齐，避开奖励文字 */
-      align-items: center;
-      padding-bottom: 100px; /* 底部留空，不遮挡奖励文字 */
-    ">
-        <div style="
-          color: #ffd700;
-          font-family: 'Cinzel', serif;
-          font-size: 24px;
-          margin-bottom: 30px;
-          text-shadow: 0 0 10px #ffd700;
-        ">
-          📸 Screenshot Time! Click to Continue
-        </div>
-        <button id="continueBtn" style="
-          padding: 15px 40px;
-          background: #ffd700;
-          color: #2c1f00;
-          border: none;
-          border-radius: 8px;
-          font-family: 'Cinzel', serif;
-          font-size: 20px;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 0 15px #ffd700;
-          transition: all 0.3s ease;
-        ">
-          Continue Playing
-        </button>
-    </div>
+    <div id="rewardFreezeOverlay">
+    <div class="freeze-tip">📸 Screenshot Time! Click to Continue</div>
+    <button id="continueBtn" class="freeze-btn">Continue Playing</button>
+</div>
     <!-- ====================== 按钮添加结束 ====================== -->
 </body>
 
