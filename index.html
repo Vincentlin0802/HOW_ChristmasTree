@@ -1069,8 +1069,9 @@ function addTipPhotoAsParticles(texture) {
             map: texture,               // 绑定皮头照片纹理
             transparent: true,          // 开启透明（避免遮挡）
             depthWrite: false,          // 解决透明渲染层级问题
-            metalness: 1.0,             // 模仿相框的高金属感（原0.9→1.0更贴近）
-            roughness: 0.1,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
+            metalness: 0.7,             // 模仿相框的高金属感（原0.9→1.0更贴近）
+            roughness: 0.5,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
+			flatShading: true,
             emissiveIntensity: 0.2     // 微弱自发光
         });
 
