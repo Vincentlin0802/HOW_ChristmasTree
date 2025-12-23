@@ -1633,13 +1633,15 @@ function showRewardTip(probability) {
     left: 50%; 
     transform: translate(-50%, -50%) scale(1); /* 初始scale=1，强制显示 */
     text-align: center;
-    font-weight: 600; 
-    color: #ffd700;
-    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700, 0 0 30px #ffd700;
+    font-weight: 800; /* 加粗字体，提升辨识度 */
+    color: #fff9c4; /* 更亮的奶金色/米黄色，比纯金色更醒目 */
+    /* 强化文字阴影+新增描边，解决背景融合问题 */
+    text-shadow: 0 0 5px #ffd700, 0 0 10px #ffd700, 0 0 15px #ffd700, 0 0 20px #ffd700, 0 2px 2px #000;
+    -webkit-text-stroke: 0.5px #ffc107; /* 金色细描边，兼容webkit浏览器 */
     z-index: 1000000; 
     pointer-events: none;
     font-family: 'Cinzel', serif;
-    background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 70%);
+    background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, rgba(255,215,0,0) 80%); /* 增强背景光晕 */
     padding: 25px 60px;
     border-radius: 12px;
     letter-spacing: 1.5px;
@@ -1676,7 +1678,7 @@ function showRewardTip(probability) {
       ease: 'power2.inOut',
       onComplete: () => document.body.removeChild(tip)
     });
-  }, 4000);
+  }, 3000);
 }
 
 // 新增：全屏闪光特效
