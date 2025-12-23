@@ -1766,12 +1766,12 @@ function resetPhotoMaterialForLowReflect(mesh, brightness = 1.2) {
       const mat = child.material;
       // 1. 关闭自发光（核心，不改动）
       mat.emissive.setHex(0x000000);
-      mat.emissiveIntensity = 0;
+      mat.emissiveIntensity = 0.2;
       
       // 2. 低反光参数（适度放宽，提升亮度）
       if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
-        mat.roughness = 0.8;        // 从1.0降到0.8（轻微反光，提升亮度）
-        mat.metalness = 0.1;        // 从0.0升到0.1（极轻微金属感，提升亮度）
+        mat.roughness = 0.6;        // 从1.0降到0.8（轻微反光，提升亮度）
+        mat.metalness = 0.2;        // 从0.0升到0.1（极轻微金属感，提升亮度）
         mat.specularIntensity = 0.1;// 从0.0升到0.1（极轻微高光）
         mat.clearcoat = 0;          
         mat.clearcoatRoughness = 1;
@@ -1851,7 +1851,7 @@ function triggerRewardEffect(mesh, probability) {
         // 只降低照片15单位内的光源（缩小范围，避免影响全局）
         const distance = obj.position.distanceTo(mesh.position);
         if (distance < 15) {
-          obj.intensity *= 0.4; // 强度降为40%（比之前更保守，减少反光）
+          obj.intensity *= 0.6; // 强度降为40%（比之前更保守，减少反光）
         }
       }
     });
