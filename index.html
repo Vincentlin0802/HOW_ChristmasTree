@@ -1830,11 +1830,19 @@ function triggerRewardEffect(mesh, probability) {
   });
 
 	// 3. 调暗照片的亮度
-  if (mesh.material && mesh.material.color) {
+if (mesh.material) {
+  console.log('mesh.material:', mesh.material); // 检查材质是否有效
+  if (mesh.material.color) {
     console.log('调整前的照片亮度：', mesh.material.color); // 打印调暗前的颜色
     mesh.material.color.multiplyScalar(0.7); // 将颜色乘以一个系数，0.7 表示降低亮度
     console.log('调整后的照片亮度：', mesh.material.color); // 打印调暗后的颜色
+  } else {
+    console.log('mesh.material没有颜色属性');
   }
+} else {
+  console.log('mesh没有材质');
+}
+	
   // 3. 金色星尘粒子特效（升级：更多粒子+多种形态+轨迹动画）
   if (typeof createRewardParticles === 'function') {
     // 多波粒子，增加层次感
