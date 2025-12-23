@@ -558,41 +558,43 @@ async function loadStoryPhotos() {
   const config = await loadConfig(folderPath);
   if (!config || (!config.images && !config.rewardImages)) return;
 
-  // 初始化全局photos数组（和pinch逻辑联动）
   if (!window.photos) window.photos = [];
 
-  // 1. 加载普通故事照片（原有逻辑+标记类型）
+  // 加载普通图片（原有逻辑）
   if (config.images && config.images.length > 0) {
     for (const imgName of config.images) {
       try {
         const texture = await loadLocalTexture(folderPath, imgName);
-        // 调用addPhotoToScene，传递「普通类型+100%概率」
         addPhotoToScene(texture, 'NORMAL', 1); 
-        console.log(`✅ 普通照片${imgName}加载完成`);
+        console.log(`✅ 普通照片${imgName}加载完成，索引：${window.photos.length-1}`);
       } catch (err) {
         console.error(`❌ 加载普通照片${imgName}失败：`, err);
       }
     }
   }
 
-  // 2. 加载奖励图片（新增逻辑+标记概率）
+  // 加载奖励图片（新增详细日志）
   if (config.rewardImages && config.rewardImages.length > 0) {
     for (const rewardItem of config.rewardImages) {
       try {
         const { name: imgName, probability } = rewardItem;
-        // 校验概率（限制在0~1之间，避免配置错误）
         const validProb = Math.max(0, Math.min(1, probability || 0.1));
         const texture = await loadLocalTexture(folderPath, imgName);
-        // 调用addPhotoToScene，传递「奖励类型+配置概率」
         addPhotoToScene(texture, 'REWARD', validProb); 
-        console.log(`✅ 奖励照片${imgName}加载完成（概率${validProb*100}%）`);
+        // 关键日志：打印奖励图片的索引+名称+类型
+        const rewardIndex = window.photos.length - 1;
+        console.log(`🎉 奖励照片${imgName}加载完成，索引：${rewardIndex}，类型：${window.photos[rewardIndex].type}`);
       } catch (err) {
         console.error(`❌ 加载奖励照片${rewardItem.name}失败：`, err);
       }
     }
   }
 
-  console.log(`📸 照片加载完成：总计${window.photos.length}张（普通+奖励）`);
+  // 最终校验：打印所有照片的索引+类型+名称
+  console.log('📸 所有照片列表：');
+  window.photos.forEach((photo, idx) => {
+    console.log(`索引${idx}：类型=${photo.type}，概率=${photo.probability}`);
+  });
 }
 
         // ==========================================
@@ -1187,17 +1189,31 @@ function addPhotoToScene(texture, type = 'NORMAL', probability = 1) {
   group.add(frame);
   group.add(photo);
   photoMeshGroup.add(group);
+	
 
-  // ========== 新增：绑定类型/概率到Group + 同步window.photos ==========
-  // 1. 给照片Group绑定元信息（方便后续读取）
-  group.userData = { type, probability };
-  // 2. 同步到全局photos数组（pinch逻辑会读取这里）
-  window.photos.push({ mesh: group, type, probability });
+ // ========== 关键修改：绑定图片名称+强化类型/概率标记 ==========
+  // 1. 获取图片文件名（如reward1.jpg，用于排查）
+  const imgName = texture.image.src.split('/').pop();
+  // 2. 给照片Group绑定完整元信息（包含名称）
+  group.userData = { 
+    type: type,          // 明确标记类型：NORMAL/REWARD
+    probability: probability, // 明确标记概率
+    name: imgName        // 新增：绑定图片名称，方便控制台排查
+  };
+  // 3. 同步到全局photos数组（确保类型/概率/名称一一对应）
+  window.photos.push({ 
+    mesh: group, 
+    type: type,          // 显式赋值，避免隐式类型错误
+    probability: probability, // 显式赋值，确保概率准确
+    name: imgName        // 新增：保存图片名称，排查时能看到是哪张图
+  });
 
   // 原有逻辑：加入粒子系统
   particleSystem.push(new Particle(group, 'PHOTO', false));
-}
 
+  // 新增：控制台日志（方便验证加载是否正确）
+  console.log(`[添加照片] 名称=${imgName}，类型=${type}，概率=${probability}，索引=${window.photos.length-1}`);
+}
      
 
 
@@ -1342,32 +1358,40 @@ function processGestures(lm) {
     console.log("当前全局索引：", window.photoIndex);
 
     // 你原有的pinch触发逻辑位置（比如onPinch函数内）
-if (isJustPinched && window.photos.length > 0) {
-  // 初始化历史索引（排除最近2次选过的）
+if (isJustPinched && window.photos && window.photos.length > 0) {
   if (!window.photoHistory) window.photoHistory = [];
   
   let randomIndex;
   let isReward = false;
 
-  // 1. 按概率筛选候选照片（核心：奖励图片低概率入选）
-  const candidateIndexes = [];
-  window.photos.forEach((photo, idx) => {
-    if (photo.type === 'NORMAL') {
-      candidateIndexes.push(idx); // 普通照片100%入选
-    } else if (photo.type === 'REWARD') {
-      if (Math.random() <= photo.probability) {
-        candidateIndexes.push(idx); // 奖励照片按概率入选
-      }
+  // ========== 修复：先分离普通/奖励图片索引 ==========
+  // 1. 提取所有奖励图片的索引
+  const rewardIndexes = window.photos.reduce((acc, photo, idx) => {
+    if (photo.type === 'REWARD' && Math.random() <= photo.probability) {
+      acc.push(idx); // 只有奖励图片且满足概率，才入选
     }
-  });
+    return acc;
+  }, []);
 
-  // 候选为空 → 只选普通照片
-  const finalCandidates = candidateIndexes.length > 0 
-    ? candidateIndexes 
-    : window.photos.map((_, idx) => idx).filter(idx => window.photos[idx].type === 'NORMAL');
+  // 2. 提取所有普通图片的索引
+  const normalIndexes = window.photos.reduce((acc, photo, idx) => {
+    if (photo.type === 'NORMAL') acc.push(idx);
+    return acc;
+  }, []);
 
-  // 2. 排除最近2次选过的索引（保留你的原有逻辑）
-  if (finalCandidates.length === 1) {
+  // 3. 候选列表：优先选奖励图片（满足概率），否则选普通图片
+  let finalCandidates = [];
+  if (rewardIndexes.length > 0) {
+    finalCandidates = rewardIndexes; // 有符合概率的奖励图片，只选奖励图片
+  } else {
+    finalCandidates = normalIndexes; // 无奖励图片，选普通图片
+  }
+
+  // ========== 原有逻辑：排除最近2次选过的索引 ==========
+  if (finalCandidates.length === 0) {
+    randomIndex = 0;
+    console.warn('⚠️ 无候选照片，兜底选索引0');
+  } else if (finalCandidates.length === 1) {
     randomIndex = finalCandidates[0];
   } else {
     do {
@@ -1375,26 +1399,22 @@ if (isJustPinched && window.photos.length > 0) {
     } while (window.photoHistory.includes(randomIndex));
   }
 
-  // 3. 触发特效（普通/奖励区分）
+  // ========== 修复：只有选到奖励图片索引，才触发奖励特效 ==========
   const selected = window.photos[randomIndex];
   if (selected.type === 'REWARD') {
     isReward = true;
-    triggerRewardEffect(selected.mesh, selected.probability); // 奖励特效
+    triggerRewardEffect(selected.mesh, selected.probability);
+    console.log(`🎁 触发真正的奖励图片：索引${randomIndex}，图片名=${selected.name || '未知'}`);
   } else {
-    triggerNormalEffect(selected.mesh); // 普通特效
+    triggerNormalEffect(selected.mesh);
+    console.log(`🔄 触发普通图片：索引${randomIndex}`);
   }
 
-  // 4. 更新历史记录+聚焦照片（保留你的原有逻辑）
   window.photoIndex = randomIndex;
   window.photoHistory.push(randomIndex);
   if (window.photoHistory.length > 2) window.photoHistory.shift();
   
   STATE.focusTarget = selected.mesh;
-  console.log(isReward ? `🎉 触发奖励（概率${selected.probability*100}%）` : `🔄 切换普通照片${randomIndex}`);
-} else if (window.photos.length === 0) {
-  STATE.focusTarget = STATE.starMesh;
-  console.log("📭 无照片，聚焦星星");
-}
 
 // 聚焦时停止旋转（保留你的原有逻辑）
 STATE.hasPalmCenter = false;
