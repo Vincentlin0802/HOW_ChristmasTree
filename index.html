@@ -1487,17 +1487,6 @@ function triggerNormalEffect(mesh) {
     mesh.rewardPulseInterval = null;
   }
 }
-
-  // 4. 普通照片放大（保留原有逻辑）
-  mesh.scale.lerp(new THREE.Vector3(5, 5, 5), 0.1);
-  
-  // 5. 清除残留的奖励特效定时器（避免冲突）
-  if (mesh.rewardPulseInterval) {
-    clearInterval(mesh.rewardPulseInterval);
-    mesh.rewardPulseInterval = null;
-  }
-}
-
 /**
  * 奖励照片专属特效（仅保留缩放+脉冲+粒子+UI提示，移除发光）
  * @param {THREE.Group} mesh - 照片的Group容器
