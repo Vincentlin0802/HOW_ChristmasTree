@@ -345,6 +345,9 @@
     }
 </style>
 
+	<!-- 2. GSAP 库引入（新增，放在样式之后、业务JS之前） -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+
     <script type="importmap">
         {
             "imports": {
@@ -1177,12 +1180,7 @@ function addPhotoToScene(texture, type = 'NORMAL', probability = 1) {
 
   const photoGeo = new THREE.PlaneGeometry(photoW, photoH);
   const photoMat = new THREE.MeshStandardMaterial({ // 替换MeshBasicMaterial
-    map: texture,
-    transparent: true,
-    side: THREE.DoubleSide,
-    emissive: 0xffffff,         // 新增：默认白色自发光
-    emissiveIntensity: 0.5      // 新增：默认弱发光
-  });
+    map: texture });
   const photo = new THREE.Mesh(photoGeo, photoMat);
   photo.position.z = 0.06;
 
