@@ -108,40 +108,42 @@
     
     /* 启动按钮基础样式（核心修复：hover 失效问题） */
 /* 启动按钮基础样式（临时恢复可见性） */
+/* 普通状态 */
 #start-btn {
-    position: fixed !important;
-    bottom: 85px !important; 
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    z-index: 99999 !important; 
-    padding: 22px 45px !important;
-    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%) !important;
-    color: var(--gold-dark) !important;
-    border: 2px solid var(--gold-secondary) !important;
-    border-radius: 16px !important;
-    font-size: 20px !important;
-    font-weight: 600 !important;
-    font-family: var(--font-main) !important;
-    cursor: pointer !important;
-    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4) !important;
-    /* 临时改：默认显示，注释掉隐藏属性 */
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    transition: all 0.3s ease !important;
+    position: fixed;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    padding: 22px 45px;
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-secondary) 100%);
+    color: var(--gold-dark);
+    border: 2px solid var(--gold-secondary);
+    border-radius: 16px;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: all 0.3s ease;
 }
 
-/* 保留hover/active样式，验证交互 */
+/* hover 状态 */
 #start-btn:hover {
-    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%) !important;
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6) !important;
-    transform: translateX(-50%) translateY(-3px) !important;
+    background: linear-gradient(135deg, #ffe100 0%, #f7d100 100%);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+    transform: translateX(-50%) translateY(-3px);
 }
 
+/* 按下状态 */
 #start-btn:active {
-    transform: translateX(-50%) translateY(1px) scale(0.95) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    transform: translateX(-50%) translateY(1px) scale(0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
+
     /* 启动按钮移动端适配 */
     @media (max-width: 768px) {
         #start-btn {
