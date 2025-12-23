@@ -743,6 +743,15 @@ async function loadStoryPhotos() {
         // 3. 初始化入口
         // ==========================================
         async function init() {
+			// 手机端性能优化
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+        // 降低渲染精度，提升帧率
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 限制像素比
+        renderer.shadowMap.enabled = false; // 关闭阴影（手机端性能消耗大）
+        // 降低粒子/模型复杂度（如果有3D模型）
+        if (treeModel) treeModel.scale.set(0.8, 0.8, 0.8); // 缩小模型
+    }
     initThree();          // 初始化 Three.js 场景
     setupEnvironment();   // 设置环境贴图
     setupLights();        // 设置灯光
@@ -1424,7 +1433,9 @@ function processGestures(lm) {
     STATE.hand.detected = true;
 
 	if (window.isRewardFrozen) return;
-
+	// 手机端适配：降低手势灵敏度（避免误触）
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const sensitivity = isMobile ? 0.003 : 0.005; // 手机端灵敏度降低
     // ========== 1. 提前初始化索引（只初始化一次，永不重置） ==========
     if (typeof window.photoIndex === 'undefined') {
         window.photoIndex = 0; // 用window全局变量，避免STATE被意外重置
@@ -1677,9 +1688,11 @@ function triggerRewardEffect(mesh, probability) {
 
 // 升级：奖励星尘粒子（多形态+多波次+轨迹）
 function createRewardParticles(centerPos, isBig = false) {
-  const particleCount = isBig ? 40 : 100; // 大粒子数量少，小粒子数量多
-  const size = isBig ? 0.3 : 0.15; // 大粒子尺寸更大
-  const range = isBig ? 18 : 12; // 大粒子扩散范围更广
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // 手机端减少粒子数量，提升性能
+    const particleCount = isMobile ? (isBig ? 20 : 50) : (isBig ? 40 : 100);
+    const size = isMobile ? (isBig ? 0.2 : 0.1) : (isBig ? 0.3 : 0.15);
+    const range = isMobile ? (isBig ? 10 : 8) : (isBig ? 18 : 12);
 
   for (let i = 0; i < particleCount; i++) {
     const geo = new THREE.SphereGeometry(size, 12, 12); // 更高精度，更圆润
@@ -1962,12 +1975,22 @@ function startSmoothSettleAnimation(duration = 3) {
         function setupEvents() {
             // 窗口调整
             window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                composer.setSize(window.innerWidth, window.innerHeight);
-            });
-
+    // 手机端适配：强制全屏
+    const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+    const height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+    
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+    composer.setSize(width, height);
+    
+    // 手机端摄像头小窗适配
+    const webcamWrapper = document.getElementById('webcam-wrapper');
+    if (webcamWrapper && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        webcamWrapper.style.width = '25vw';
+        webcamWrapper.style.height = '35vw';
+    }
+});
 		
 
             
