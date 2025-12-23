@@ -1051,10 +1051,10 @@ function addTipPhotoAsParticles(texture) {
     if (!img || !texture) return;
 
     // 2. 粒子基础配置（可自定义）
-    const particleCount = 100;  // 每张图片生成100个粒子
+    const particleCount = 50;  // 每张图片生成100个粒子
     const cylinderRadius = 0.3; // 圆柱半径
     const cylinderHeight = 0.2; // 圆柱高度（短圆柱）
-    const scaleFactor = 6;      // 粒子缩放系数
+    const scaleFactor = 4;      // 粒子缩放系数
 
     // 3. 循环生成粒子（核心逻辑）
     for (let i = 0; i < particleCount; i++) {
@@ -1071,8 +1071,8 @@ function addTipPhotoAsParticles(texture) {
             map: texture,               // 绑定皮头照片纹理
             transparent: true,          // 开启透明（避免遮挡）
             depthWrite: false,          // 解决透明渲染层级问题
-            metalness: 0.7,             // 模仿相框的高金属感（原0.9→1.0更贴近）
-            roughness: 0.5,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
+            metalness: 0.8,             // 模仿相框的高金属感（原0.9→1.0更贴近）
+            roughness: 0.4,             // 低粗糙度=高光泽（原0.6→0.2更贴近相框）
 			flatShading: true,
             emissiveIntensity: 0.2     // 微弱自发光
         });
