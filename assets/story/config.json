@@ -30,17 +30,17 @@
     "029.jpg"
   ],
   "rewardImages": [
-  {
-    "name": "reward1.jpg",
-    "probability": 0.05  // 5% 概率出现
-  },
-  {
-    "name": "reward2.jpg",
-    "probability": 0.05  // 5% 概率出现
-  },
-  {
-    "name": "reward3.jpg",
-    "probability": 0.05  // 5% 概率出现
-  }
-]
+    {
+      "name": "reward1.jpg",
+      "probability": 0.05
+    },
+    {
+      "name": "reward2.jpg",
+      "probability": 0.05
+    },
+    {
+      "name": "reward3.jpg",
+      "probability": 0.05
+    }
+  ]
 }
