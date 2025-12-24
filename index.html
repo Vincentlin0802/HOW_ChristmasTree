@@ -10,7 +10,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
 <title>HOW Christmas Tree Journey</title>
-    
+
+	<!-- ========== 这里添加GA4统计代码（核心位置） ========== -->
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MXX8YEE7Y0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-MXX8YEE7Y0'); // 替换成你的GA4测量ID
+    </script>
+    <!-- ========== GA4代码结束 ========== -->
     <style>
     /* 引入衬线字体，营造高级感 */
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&display=swap');
@@ -977,7 +987,17 @@ if (config.rewardImages && config.rewardImages.length > 0) {
     startBtn.addEventListener('click', async () => {
         startBtn.textContent = 'Requesting camera permission...';
         startBtn.disabled = true; // 禁用按钮，避免重复点击
-        
+
+		// ========== ✅ 新增：GA4统计「点击开始游戏」事件 ==========
+    if (window.gtag) { // 兼容：gtag未加载时不报错
+        gtag('event', 'game_start', {
+            event_category: '核心交互', // 事件分类（方便GA4后台筛选）
+            event_label: '点击Start按钮启动游戏', // 事件标签（描述行为）
+            value: 1 // 计数用，固定传1即可
+        });
+        console.log('📊 GA4：用户点击Start按钮，已上报game_start事件');
+    }
+    // ========== GA4代码结束 ==========
         await initCameraAndGesture(); // 先请求摄像头权限
         window.isSceneStarted = true; // 解锁动画/手势
         startBtn.style.display = 'none'; // 隐藏按钮
@@ -1830,6 +1850,20 @@ function triggerRewardEffect(mesh, probability) {
     console.warn('奖励特效触发失败：参数无效');
     return;
   }
+
+ // ========== ✅ 【新增核心】GA4 奖励捕获事件上报 —— 放在最顶部 ==========
+  if (window.gtag) { // 兼容：如果gtag未加载，不报错
+    gtag('event', 'christmas_reward_caught', {
+      // 事件核心参数（可在GA4后台筛选/统计）
+      event_category: '用户交互',
+      event_label: '圣诞奖励图捕获',
+      reward_probability: probability, // 捕获的奖励概率（0.002）
+      reward_type: '稀有奖励', // 可自定义：比如区分不同奖励图写'reward1/reward2/reward3'
+      value: 1 // 计数用，固定传1即可
+    });
+    console.log('📊 GA4奖励事件已上报，概率：', probability);
+  }
+  // ========== GA4 上报代码结束 ==========
 
   // ========== 新增：奖励触发后冻结交互 ==========
   window.isRewardFrozen = true; // 全局标记：冻结状态
