@@ -1645,6 +1645,19 @@ function processGestures(lm) {
     if (typeof window.lastPinch === 'undefined') window.lastPinch = false;
     const isJustPinched = !window.lastPinch && isPinching;
 
+	// ========== ✅ 新增：GA4统计「捏合手势尝试」事件 ==========
+    if (isJustPinched && window.gtag) { // 仅「首次捏合」时统计，避免重复计数
+        gtag('event', 'gesture_pinch', {
+            event_category: '手势交互', // 事件分类（方便筛选）
+            event_label: '用户尝试捏合手势（Pinch）', // 事件描述
+            value: 1, // 计数用，固定传1
+            // 可选：新增维度，区分捏合是否成功抓到内容
+            pinch_attempt_type: window.photos?.length > 0 ? '尝试抓照片' : '无照片（抓星星）'
+        });
+        console.log('📊 GA4：用户尝试捏合手势，已上报gesture_pinch事件');
+    }
+    // ========== GA4统计代码结束 ==========
+
     // ========== 3. 手掌张开程度判定（用于TREE/SCATTER模式） ==========
     const dIndex = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
     const dMiddle = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
