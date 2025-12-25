@@ -645,40 +645,53 @@
 }
 /* ========== 新增：加载进度条样式 ========== */
     #loadingProgressContainer {
-        position: fixed; 
-        top: 0; 
-        left: 0; 
-        width: 100%; 
-        height: 6px; 
-        background: rgba(0,0,0,0.8); 
-        z-index: 999999; 
-        display: flex; 
-        align-items: center;
-    }
-    #loadingProgressBar {
-        height: 100%; 
-        width: 0%; 
-        background: linear-gradient(90deg, #ffd700 0%, #f0c808 100%); 
-        transition: width 0.5s ease-in-out;
-    }
-    #loadingProgressText {
-        position: absolute; 
-        left: 50%; 
-        transform: translateX(-50%); 
-        color: #ffd700; 
-        font-size: 12px; 
-        font-family: 'Cinzel', serif; 
-        text-shadow: 0 0 5px #ffd700;
-    }
-    /* 进度条响应式适配 */
-    @media (max-width: 768px) {
-        #loadingProgressText { font-size: 3vw !important; }
-        #loadingProgressContainer { height: 4px !important; }
-    }
-    @media (min-width: 769px) {
-        #loadingProgressText { font-size: 14px !important; }
-        #loadingProgressContainer { height: 6px !important; }
-    }
+    width: 80%; /* 适配loader宽度，PC/移动端自适应 */
+    max-width: 400px; /* 限制最大宽度 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+
+/* 进度条填充层：保留你的金色渐变，调整尺寸 */
+#loadingProgressBar {
+    width: 0%; 
+    height: 100%;
+    background: linear-gradient(90deg, #ffd700 0%, #f0c808 100%); /* 保留你的金色渐变 */
+    transition: width 0.5s ease-in-out; /* 保留原有过渡动画 */
+    border-radius: 3px; /* 圆角适配 */
+}
+
+/* 进度条背景（新增，补全进度条容器） */
+#loadingProgressContainer::before {
+    content: '';
+    width: 100%;
+    height: 6px; /* 基础高度 */
+    background: rgba(255, 215, 0, 0.15); /* 金色半透明背景，匹配loader风格 */
+    border-radius: 3px;
+    margin-bottom: 8px; /* 进度条和百分比文本的间距 */
+    display: block;
+}
+
+/* 百分比文本：保留金色、阴影，调整定位 */
+#loadingProgressText {
+    color: #ffd700; 
+    font-size: 12px; 
+    font-family: 'Cinzel', serif; 
+    text-shadow: 0 0 5px #ffd700; /* 保留你的发光效果 */
+    text-align: center;
+}
+
+/* 进度条响应式适配（基于你的原有规则调整） */
+@media (max-width: 768px) {
+    #loadingProgressText { font-size: 3vw !important; }
+    #loadingProgressContainer::before { height: 4px !important; } /* 移动端进度条高度 */
+}
+@media (min-width: 769px) {
+    #loadingProgressText { font-size: 14px !important; }
+    #loadingProgressContainer::before { height: 6px !important; } /* PC端进度条高度 */
+}
     
 </style>
 
@@ -697,17 +710,18 @@
 </head>
 
 <body>
-    <div id="loader">
+    <!-- 加载遮罩容器 -->
+<div id="loader">
     <div class="spinner"></div>
     <div class="loader-text">
         Initial loading requires image content, please wait
     </div>
-</div>
-	    <!-- ========== 新增：加载进度条 DOM ========== -->
-    <div id="loadingProgressContainer">
-        <div id="loadingProgressBar"></div>
-        <span id="loadingProgressText">0% - Initializing Scene</span>
+    <!-- 进度条容器（嵌入loader内部，不再是顶部fixed） -->
+    <div id="loadingProgressContainer" class="progress-container">
+        <div id="loadingProgressBar" class="progress-bar-fill"></div>
+        <div id="loadingProgressText" class="progress-text">0%</div>
     </div>
+</div>
 
 
     <div id="canvas-container"></div>
