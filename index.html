@@ -643,7 +643,42 @@
     0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
     100% { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
-
+/* ========== 新增：加载进度条样式 ========== */
+    #loadingProgressContainer {
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 6px; 
+        background: rgba(0,0,0,0.8); 
+        z-index: 999999; 
+        display: flex; 
+        align-items: center;
+    }
+    #loadingProgressBar {
+        height: 100%; 
+        width: 0%; 
+        background: linear-gradient(90deg, #ffd700 0%, #f0c808 100%); 
+        transition: width 0.5s ease-in-out;
+    }
+    #loadingProgressText {
+        position: absolute; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        color: #ffd700; 
+        font-size: 12px; 
+        font-family: 'Cinzel', serif; 
+        text-shadow: 0 0 5px #ffd700;
+    }
+    /* 进度条响应式适配 */
+    @media (max-width: 768px) {
+        #loadingProgressText { font-size: 3vw !important; }
+        #loadingProgressContainer { height: 4px !important; }
+    }
+    @media (min-width: 769px) {
+        #loadingProgressText { font-size: 14px !important; }
+        #loadingProgressContainer { height: 6px !important; }
+    }
     
 </style>
 
@@ -716,6 +751,36 @@
     <div class="freeze-tip">📸 Screenshot Time! Click to Continue</div>
     <button id="continueBtn" class="freeze-btn">Continue Playing</button>
 </div>
+
+	<script>
+        let loadingProgress = 0;
+        /**
+         * 更新加载进度（仅统计startBtn显示前的场景加载）
+         * @param {number} newProgress 目标进度（0-100）
+         * @param {string} text 进度描述
+         */
+        function updateLoadingProgress(newProgress, text = "") {
+            loadingProgress = Math.min(Math.max(newProgress, loadingProgress), 100);
+            const progressBar = document.getElementById('loadingProgressBar');
+            const progressText = document.getElementById('loadingProgressText');
+            
+            if (progressBar) progressBar.style.width = `${loadingProgress}%`;
+            if (progressText) progressText.textContent = `${loadingProgress}% - ${text}`;
+            
+            // 进度100%后隐藏进度条（和startBtn显示同步）
+            if (loadingProgress === 100) {
+                setTimeout(() => {
+                    const container = document.getElementById('loadingProgressContainer');
+                    if (container) {
+                        container.style.opacity = 0;
+                        setTimeout(() => container.style.display = 'none', 500);
+                    }
+                }, 800);
+            }
+        }
+        // 初始化进度
+        updateLoadingProgress(0);
+    </script>
     <!-- ====================== 按钮添加结束 ====================== -->
 </body>
 
@@ -926,21 +991,42 @@ if (config.rewardImages && config.rewardImages.length > 0) {
         // 3. 初始化入口
         // ==========================================
         async function init() {
-    initThree();          // 初始化 Three.js 场景
+	updateLoadingProgress(5);    // 初始化Three.js核心		
+    initThree();   
+			// 初始化 Three.js 场景
+	updateLoadingProgress(10);   // 环境贴图设置完成		
     setupEnvironment();   // 设置环境贴图
+			
+	updateLoadingProgress(15);   // 灯光系统初始化完成		
     setupLights();        // 设置灯光
+			
+	updateLoadingProgress(20);   // 程序化纹理生成完成		
     createTextures();     // 生成程序化纹理
+
+	updateLoadingProgress(25);   // 星空背景创建完成		
     createGalaxyBackground(); // 创建背景星空
+
+	updateLoadingProgress(30);   // 后期处理设置完成		
     setupPostProcessing();// 设置辉光后期处理
+
+	updateLoadingProgress(35);   // DOM事件绑定完成		
     setupEvents();        // 绑定 DOM 事件
     
     // 加载所有图片资源
+	updateLoadingProgress(40);   // 开始加载标题Logo		
     await loadTitleLogo();   // 加载标题Logo
+
+	updateLoadingProgress(55);   // 开始加载皮头照片		
     await loadTipPhotos();   // 加载皮头照片
+
+	updateLoadingProgress(70);   // 开始加载故事照片	
     await loadStoryPhotos(); // 加载故事照片
 
     // ========== 核心修改：等待圣诞树粒子完全创建 ==========
+	updateLoadingProgress(90);   // 开始创建圣诞树粒子		
     await createParticles(); // 替换原来的同步调用，等粒子创建完
+
+	updateLoadingProgress(100);   // 开始创建圣诞树粒子				
 
     // 移除 Loading 遮罩
     const loader = document.getElementById('loader');
